@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  lint-and-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Python syntax (snapshot package)
+        run: python3 -m compileall -q snapshot
+
+      - name: Lint placeholder
+        run: |
+          echo "TODO: add ruff/black when pyproject.toml exists"
+
+  docker-sandbox:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build sandbox image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./sandbox
+          file: ./sandbox/Dockerfile
+          push: false
+          tags: saep-sandbox:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive infra
+
+      - name: Terraform init (no backend)
+        run: terraform -chdir=infra init -backend=false -input=false
+
+      - name: Terraform validate
+        env:
+          # Provider block may read env; validation should not call Cloudflare API
+          CLOUDFLARE_API_TOKEN: "dummy-for-validate-only"
+        run: terraform -chdir=infra validate

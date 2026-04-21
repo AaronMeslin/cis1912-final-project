@@ -1,0 +1,25 @@
+# Git and VCS
+**/.git
+**/.gitignore
+
+# Node
+**/node_modules
+**/npm-debug.log
+**/yarn-error.log
+
+# Python
+**/__pycache__
+**/*.pyc
+**/.venv
+**/venv
+**/.mypy_cache
+**/.pytest_cache
+
+# IDE / OS
+**/.DS_Store
+**/.idea
+**/.vscode
+
+# Docs and CI not needed inside image build context
+**/*.md
+../.github

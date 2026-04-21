@@ -1,0 +1,18 @@
+# Cloudflare Workers — Sandboxed Agent Execution Platform (stub)
+# Docs: https://developers.cloudflare.com/workers/wrangler/configuration/
+
+name = "saep-control-plane"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# TODO: Set workers_dev = false and attach custom routes / zones in production.
+workers_dev = true
+
+# TODO: Replace with encrypted secrets via wrangler secret / Terraform.
+[vars]
+ENVIRONMENT = "development"
+SANDBOX_ORCHESTRATOR_URL = "http://127.0.0.1:9999"
+
+# TODO: Uncomment when using modules with imports from npm.
+# [build]
+# command = ""
