@@ -1,6 +1,6 @@
 # Sandboxed Agent Execution Platform
 
-This project lets AI coding agents run commands and scripts inside **isolated Docker sandboxes**, with a **snapshot / diff / rollback** layer so workspace changes can be reviewed and undone before they are committed or propagated. A **Cloudflare Workers** control plane (stubbed) will eventually orchestrate sandbox lifecycle, health, and streaming; **Terraform** will wire cloud resources. Everything in this repository is currently **scaffold and stubs**—implement the checklists below before relying on it in production.
+This project lets AI coding agents run commands and scripts inside **isolated Docker sandboxes**, with a **snapshot / diff / rollback** layer so workspace changes can be reviewed and undone before they are committed or propagated. A **Cloudflare Workers** control plane (stubbed) will eventually orchestrate sandbox lifecycle, health, and streaming; **Terraform** will wire cloud resources. The snapshot CLI now has a working first vertical slice; Docker integration, the control plane, and infra are still scaffolds.
 
 ## Architecture
 
@@ -53,11 +53,12 @@ Flow in words: the **agent** asks the **control plane** to create or use a sandb
 
 ### Snapshot / Diff / Rollback
 
-- [ ] Snapshot working directory before execution
-- [ ] Diff engine (created, modified, deleted files, symlinks, hidden files)
-- [ ] Rollback system to restore from snapshot
-- [ ] CLI: `safe-run <command>`, `safe-run diff`, `safe-run undo`
-- [ ] Edge case tests: large binaries, symlinks, hidden files
+- [x] Snapshot working directory before execution
+- [x] Diff engine (created, modified, deleted files, symlinks, hidden files)
+- [x] Rollback system to restore from snapshot
+- [x] CLI: `safe-run <command>`, `safe-run diff`, `safe-run undo`
+- [x] Safety tests for tampered manifests, `.saep` tampering, corrupt blobs, symlinks, hidden files, modes, and read-only directories
+- [ ] Edge case tests: large binaries, sparse files, and concurrent runs
 
 ### Control Plane (Cloudflare Workers)
 
@@ -74,8 +75,8 @@ Flow in words: the **agent** asks the **control plane** to create or use a sandb
 ### CI/CD
 
 - [ ] Integration tests for sandbox spin-up/teardown
-- [ ] Automated diff/rollback tests
-- [ ] GitHub Actions workflow
+- [x] Automated diff/rollback tests
+- [x] GitHub Actions workflow
 
 ### Observability
 
@@ -95,10 +96,18 @@ Flow in words: the **agent** asks the **control plane** to create or use a sandb
 
 ```bash
 make build          # Build the sandbox Docker image
-make test           # Run stub/syntax checks (snapshot Python, etc.)
+make test           # Run snapshot Python compile check + pytest suite
 make dev            # Start the control plane locally (Wrangler dev)
 make sandbox-up     # Optional: run sandbox container (see Makefile)
 make sandbox-down   # Tear down sandbox container
+```
+
+For a fresh local Python environment:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -e ".[dev]"
+make test PYTHON=.venv/bin/python
 ```
 
 ### Control plane (Miniflare / Wrangler)
@@ -115,12 +124,24 @@ The Worker entrypoint is [control-plane/src/index.ts](control-plane/src/index.ts
 
 ### Snapshot CLI
 
-From the repository root (so the `snapshot` package resolves):
+From the repository root, either run the module directly or install the editable package:
 
 ```bash
 python3 -m snapshot.safe_run --help
-# Future: install as `safe-run` on PATH via pip/console_scripts
+safe-run --help        # after `pip install -e ".[dev]"`
 ```
+
+Manual smoke test in a throwaway workspace:
+
+```bash
+mkdir -p /tmp/saep-manual-test
+cd /tmp/saep-manual-test
+safe-run run python3 -c "open('hello.txt', 'w').write('hi')"
+safe-run diff
+safe-run undo
+```
+
+Expected output includes `created hello.txt` from `diff` and `removed hello.txt` from `undo`.
 
 ### Terraform
 

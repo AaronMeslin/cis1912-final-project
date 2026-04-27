@@ -4,17 +4,18 @@
 IMAGE_NAME ?= saep-sandbox
 IMAGE_TAG ?= local
 SANDBOX_CONTAINER ?= saep-sandbox-dev
+PYTHON ?= python3
 
 build:
 	docker build -t $(IMAGE_NAME):$(IMAGE_TAG) -f sandbox/Dockerfile sandbox
 
 test:
-	python3 -m compileall -q snapshot
-	@echo "OK: snapshot Python compiles"
+	$(PYTHON) -m compileall -q snapshot
+	$(PYTHON) -m pytest tests/snapshot
 
 lint:
 	@echo "TODO: add ruff/black when pyproject.toml exists"
-	python3 -m compileall -q snapshot
+	$(PYTHON) -m compileall -q snapshot
 
 dev:
 	cd control-plane && npx wrangler dev

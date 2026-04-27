@@ -15,12 +15,14 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install Python test dependencies
+        run: python3 -m pip install -e ".[dev]"
+
       - name: Python syntax (snapshot package)
         run: python3 -m compileall -q snapshot
 
-      - name: Lint placeholder
-        run: |
-          echo "TODO: add ruff/black when pyproject.toml exists"
+      - name: Snapshot tests
+        run: python3 -m pytest tests/snapshot
 
   docker-sandbox:
     runs-on: ubuntu-latest

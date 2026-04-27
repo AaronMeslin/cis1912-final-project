@@ -2,9 +2,9 @@
 
 ## What this component is
 
-This package implements the **safety layer** between “agent ran a command” and “the repo on disk changed.” Before running a command, we capture a **snapshot** of the working directory (or a configured root). Afterward we can **diff** against that snapshot (created, modified, deleted entries, including symlinks and dotfiles) and **rollback** to restore the tree.
+This package implements the **safety layer** between “agent ran a command” and “the repo on disk changed.” Before running a command, it captures a **snapshot** of the working directory. Afterward it can **diff** against that snapshot (created, modified, deleted entries, including symlinks and dotfiles) and **rollback** to restore the tree.
 
-The CLI entrypoint is [`safe_run.py`](safe_run.py), intended to be exposed as `safe-run` once packaged (`pip install` or a thin shell wrapper).
+The CLI entrypoint is [`safe_run.py`](safe_run.py). Run it with `python3 -m snapshot.safe_run`, or install the package in editable mode and use `safe-run`.
 
 ## Files in this directory
 
@@ -16,34 +16,87 @@ The CLI entrypoint is [`safe_run.py`](safe_run.py), intended to be exposed as `s
 | [diff.py](diff.py) | Compare snapshot vs live tree; structured change list |
 | [rollback.py](rollback.py) | Restore workspace from a snapshot |
 
-## Design notes
+## Current behavior
 
-- **Snapshot format**: likely a content-addressed store (files hashed by content) plus metadata for paths, modes, symlinks, and xattrs—**TBD** in implementation.
-- **Scope**: snapshot root defaults to current working directory; must handle `.hidden` files and nested `.git` policy (often exclude `.git` from snapshots or snapshot it read-only—product decision).
-- **Large binaries**: stream or hardlink; avoid loading multi-GB files into RAM; add tests for big files.
-- **Symlinks**: record link target; on rollback, recreate symlink vs follow policy must be explicit.
+- **Snapshot format**: `.saep/snapshots/<snapshot_id>/manifest.json` plus content-addressed file blobs under `blobs/`.
+- **Scope**: snapshot root defaults to the current working directory.
+- **Exclusions**: `.saep/` and `.git/` are excluded from snapshots and rollback.
+- **Files**: regular files are hashed with SHA-256 and copied into the blob store.
+- **Directories**: directories are recorded so rollback can recreate missing structure.
+- **Symlinks**: symlink targets are recorded and recreated as symlinks on rollback.
+- **State**: `.saep/state.json` stores the last snapshot id for `diff` and `undo`.
+- **Manifest validation**: loaded snapshots reject absolute paths, parent traversal, `.git/` or `.saep/` entries, malformed entry metadata, and invalid blob digests.
+- **Rollback preflight**: rollback validates all manifest entries and checks file blob existence and SHA-256 integrity before mutating the workspace.
+- **CLI staging**: `safe-run run` creates the pre-command snapshot in a temporary store first, then publishes it into `.saep/` after the command exits so the wrapped process cannot delete or redirect the current snapshot metadata before state is persisted.
 
-## How `safe-run` should orchestrate (target flow)
+## Usage
+
+From a workspace root:
+
+```bash
+python3 -m snapshot.safe_run run python3 -c "open('hello.txt', 'w').write('hi')"
+python3 -m snapshot.safe_run diff
+python3 -m snapshot.safe_run undo
+```
+
+After `pip install -e ".[dev]"`, the equivalent console command is available:
+
+```bash
+safe-run run python3 -c "open('hello.txt', 'w').write('hi')"
+safe-run diff
+safe-run undo
+```
+
+`diff` exits `1` when changes are present and `0` when the workspace matches the last snapshot. `undo` restores the workspace to the last snapshot.
+
+Manual verification from a throwaway directory should look like this:
+
+```bash
+mkdir -p /tmp/saep-manual-test
+cd /tmp/saep-manual-test
+safe-run run python3 -c "open('hello.txt', 'w').write('hi')"
+safe-run diff     # created hello.txt
+safe-run undo     # removed hello.txt
+```
+
+For modification rollback:
+
+```bash
+echo "before" > file.txt
+safe-run run python3 -c "open('file.txt', 'w').write('after\n')"
+safe-run diff     # modified file.txt (content changed)
+cat file.txt      # after
+safe-run undo     # restored file.txt
+cat file.txt      # before
+```
+
+## How `safe-run` orchestrates
 
 1. Resolve workspace root and snapshot store path (env or `.saep/` directory).
-2. **Before** subprocess: `create_snapshot()` → returns snapshot id.
-3. Run user command subprocess; capture exit code, stdout/stderr (optional logging to observability layer).
-4. On success path: user may run `safe-run diff` to review changes; `safe-run undo` restores from last snapshot id.
+2. **Before** subprocess: `create_snapshot()` records the tree in a temporary store outside the workspace.
+3. Run user command subprocess and capture its exit code.
+4. Copy the snapshot into `.saep/snapshots/<snapshot_id>/` and write `.saep/state.json`.
+5. User may run `safe-run diff` to review changes; `safe-run undo` restores from the last snapshot id.
 
 ## Edge cases to cover in tests
 
-- Large files, sparse files (if supported)
-- Symlinks (absolute vs relative)
-- Hidden files and directories
-- Permission bits and executability
-- Concurrent runs (lock snapshot store)
+- [ ] Large files, sparse files (if supported)
+- [x] Symlinks
+- [x] Hidden files and directories
+- [x] Permission bits and executability
+- [x] Malicious manifest paths, malformed entries, missing blobs, and corrupt blobs
+- [x] Commands that delete, replace, or symlink `.saep/` during execution
+- [x] Read-only directories whose children need restoring
+- [ ] Concurrent runs (lock snapshot store)
 
 ## Tasks to implement
 
-- [ ] Define on-disk snapshot layout and versioning
-- [ ] Implement `snapshot.py`: capture tree, exclude patterns, symlink metadata
-- [ ] Implement `diff.py`: unified change list (create/modify/delete), symlink and dotfile handling
-- [ ] Implement `rollback.py`: atomic restore where possible; backup current broken state before undo
-- [ ] Wire `safe_run.py` subprocess execution with configurable timeout and env whitelist
-- [ ] Add pytest suite: golden trees, large binary, symlinks, hidden files
+- [x] Define on-disk snapshot layout and versioning
+- [x] Implement `snapshot.py`: capture tree, exclude patterns, symlink metadata
+- [x] Implement `diff.py`: unified change list (create/modify/delete), symlink and dotfile handling
+- [x] Implement `rollback.py`: restore files and remove paths absent from snapshot
+- [x] Wire `safe_run.py` subprocess execution
+- [x] Add pytest suite: symlinks, hidden files, rollback, CLI round trip, safety regressions
+- [ ] Add timeout/env whitelist to subprocess execution
+- [ ] Add large binary and concurrency tests
 - [ ] Document integration with Docker (snapshot runs on host volume bind-mounted into sandbox)

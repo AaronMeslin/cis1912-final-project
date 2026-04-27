@@ -2,13 +2,13 @@
 
 ## What this component is
 
-This directory holds **Infrastructure as Code** for the platform: primarily **Cloudflare** (Workers, DNS, optional KV/D1) and, later, whatever runs **Docker** sandboxes at scale (VMs, Kubernetes, Nomad—TBD). The current [`main.tf`](main.tf) is a **stub**: it pins the Cloudflare provider and uses a `null_resource` placeholder so `terraform init` / `plan` can run without creating real resources.
+This directory holds **Infrastructure as Code** for the platform: primarily **Cloudflare** (Workers, DNS, optional KV/D1) and, later, whatever runs **Docker** sandboxes at scale (VMs, Kubernetes, Nomad—TBD). The current [`main.tf`](main.tf) is a **stub**: it pins the Cloudflare provider and uses a `terraform_data` placeholder so `terraform init` / `plan` can run without creating real cloud resources.
 
 ## Files in this directory
 
 | File | Role |
 |------|------|
-| [main.tf](main.tf) | `required_providers`, Cloudflare provider block, placeholder resource |
+| [main.tf](main.tf) | `required_providers`, Cloudflare provider block, `terraform_data` placeholder resource |
 
 ## Prerequisites
 
