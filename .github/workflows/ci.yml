@@ -35,12 +35,16 @@ jobs:
       - name: Build sandbox image
         uses: docker/build-push-action@v6
         with:
-          context: ./sandbox
+          context: .
           file: ./sandbox/Dockerfile
+          load: true
           push: false
           tags: saep-sandbox:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Docker sandbox smoke test
+        run: make sandbox-smoke IMAGE_TAG=ci
 
   terraform:
     runs-on: ubuntu-latest

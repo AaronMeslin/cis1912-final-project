@@ -1,6 +1,6 @@
 # Sandboxed Agent Execution Platform
 
-This project lets AI coding agents run commands and scripts inside **isolated Docker sandboxes**, with a **snapshot / diff / rollback** layer so workspace changes can be reviewed and undone before they are committed or propagated. A **Cloudflare Workers** control plane (stubbed) will eventually orchestrate sandbox lifecycle, health, and streaming; **Terraform** will wire cloud resources. The snapshot CLI now has a working first vertical slice; Docker integration, the control plane, and infra are still scaffolds.
+This project lets AI coding agents run commands and scripts inside **isolated Docker sandboxes**, with a **snapshot / diff / rollback** layer so workspace changes can be reviewed and undone before they are committed or propagated. A **Cloudflare Workers** control plane (stubbed) will eventually orchestrate sandbox lifecycle, health, and streaming; **Terraform** will wire cloud resources. The snapshot CLI has a working first vertical slice, and the Docker image now installs that CLI for in-container smoke testing. The control plane and infra are still scaffolds.
 
 ## Architecture
 
@@ -46,10 +46,13 @@ Flow in words: the **agent** asks the **control plane** to create or use a sandb
 
 ### Docker Sandbox
 
-- [ ] Base workspace image with shell, git, Node/Python
-- [ ] Headless browser support
+- [x] Base workspace image with shell, git, Node/Python
+- [x] Headless browser support
+- [x] Non-root runtime user with writable `/workspace`
+- [x] `safe-run` installed inside the sandbox image
+- [x] Sandbox healthcheck and Docker smoke test
 - [ ] Security constraints (network allowlist, read-only mounts)
-- [ ] Multi-stage Dockerfile
+- [x] Multi-stage Dockerfile
 
 ### Snapshot / Diff / Rollback
 
@@ -74,6 +77,7 @@ Flow in words: the **agent** asks the **control plane** to create or use a sandb
 
 ### CI/CD
 
+- [x] Docker sandbox build and `safe-run` smoke test
 - [ ] Integration tests for sandbox spin-up/teardown
 - [x] Automated diff/rollback tests
 - [x] GitHub Actions workflow
@@ -97,6 +101,7 @@ Flow in words: the **agent** asks the **control plane** to create or use a sandb
 ```bash
 make build          # Build the sandbox Docker image
 make test           # Run snapshot Python compile check + pytest suite
+make sandbox-smoke  # Run safe-run diff/undo inside the Docker sandbox
 make dev            # Start the control plane locally (Wrangler dev)
 make sandbox-up     # Optional: run sandbox container (see Makefile)
 make sandbox-down   # Tear down sandbox container
