@@ -2,22 +2,29 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+import json
 import uuid
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi.responses import StreamingResponse
 
 from .config import load_settings
 from .docker_client import (
     DockerSandboxClient,
+    ExecExit,
+    ExecOutput,
     SandboxContainerNotFound,
+    SandboxExecTimedOut,
     SandboxImageNotFound,
 )
-from .models import CreateResponse, HealthMetrics, HealthResponse
+from .locks import SandboxExecLocks
+from .models import CreateResponse, ExecRequest, HealthMetrics, HealthResponse
 from .registry import SandboxRegistry
 
 settings = load_settings()
 registry = SandboxRegistry(settings.registry_db)
 docker_client: DockerSandboxClient | None = None
+exec_locks = SandboxExecLocks()
 
 
 def initialize() -> None:
@@ -159,11 +166,26 @@ def sandbox_health(
 
 
 @app.post("/sandbox/{sandbox_id}/exec", dependencies=[Depends(require_internal_token)])
-def exec_sandbox(sandbox_id: str) -> None:
-    """Placeholder for SSE command execution in the next phase."""
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail={"error": "not_implemented", "message": f"Sandbox exec is not implemented yet for {sandbox_id}"},
+def exec_sandbox(
+    sandbox_id: str,
+    request: ExecRequest,
+    client: DockerSandboxClient = Depends(get_docker_client),
+) -> StreamingResponse:
+    """Run a command inside a sandbox and stream output as SSE."""
+    record = registry.get_sandbox(sandbox_id)
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "not_found", "message": f"Sandbox not found: {sandbox_id}"},
+        )
+    if not _try_acquire_exec_lock(sandbox_id):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": "sandbox_busy", "message": "Another command is already running in this sandbox"},
+        )
+    return StreamingResponse(
+        _exec_stream(sandbox_id, record.container_id, request, client),
+        media_type="text/event-stream",
     )
 
 
@@ -190,3 +212,45 @@ def delete_sandbox(
         ) from exc
     registry.delete_sandbox(sandbox_id)
     return {"sandbox_id": sandbox_id, "status": "destroyed"}
+
+
+def _try_acquire_exec_lock(sandbox_id: str) -> bool:
+    """Try to reserve a sandbox for command execution."""
+    return exec_locks.acquire_nowait(sandbox_id)
+
+
+def _release_exec_lock(sandbox_id: str) -> None:
+    """Release a lock reserved by _try_acquire_exec_lock."""
+    exec_locks.release(sandbox_id)
+
+
+def _exec_stream(
+    sandbox_id: str,
+    container_id: str,
+    request: ExecRequest,
+    client: DockerSandboxClient,
+):
+    """Yield SSE messages while holding the sandbox exec lock."""
+    try:
+        try:
+            for event in client.exec_command(container_id, request.command, request.timeout):
+                if isinstance(event, ExecOutput):
+                    yield _sse("output", {"stream": event.stream, "line": event.data})
+                elif isinstance(event, ExecExit):
+                    yield _sse("exit", {"code": event.code})
+        except SandboxContainerNotFound:
+            yield _sse("error", {"error": "container_not_found", "message": "Sandbox container not found"})
+            yield _sse("exit", {"code": 127})
+        except SandboxExecTimedOut as exc:
+            yield _sse("error", {"error": "command_timed_out", "message": str(exc)})
+            yield _sse("exit", {"code": 124})
+        except Exception as exc:
+            yield _sse("error", {"error": "exec_failed", "message": str(exc)})
+            yield _sse("exit", {"code": 1})
+    finally:
+        _release_exec_lock(sandbox_id)
+
+
+def _sse(event: str, payload: dict) -> str:
+    """Format one server-sent event frame."""
+    return f"event: {event}\ndata: {json.dumps(payload, sort_keys=True)}\n\n"

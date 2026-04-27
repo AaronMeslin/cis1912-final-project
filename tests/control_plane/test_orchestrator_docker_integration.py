@@ -79,6 +79,52 @@ def test_docker_lifecycle_create_health_delete(monkeypatch, tmp_path: Path) -> N
                 pass
 
 
+def test_docker_exec_streams_safe_run_diff(monkeypatch, tmp_path: Path) -> None:
+    """Run safe-run inside a real sandbox and stream its diff output."""
+    docker_client = docker_client_or_skip()
+    app = load_real_app(monkeypatch, tmp_path)
+    client = TestClient(app)
+    headers = {"X-SAEP-Internal-Token": "test-token"}
+    created_body: dict | None = None
+
+    try:
+        created = client.post("/sandbox/create", headers=headers)
+        assert created.status_code == 200
+        created_body = created.json()
+
+        write_file = client.post(
+            f"/sandbox/{created_body['sandbox_id']}/exec",
+            headers=headers,
+            json={
+                "command": [
+                    "safe-run",
+                    "run",
+                    "python3",
+                    "-c",
+                    "from pathlib import Path; Path('f.txt').write_text('x', encoding='utf-8')",
+                ],
+                "timeout": 30,
+            },
+        )
+        assert write_file.status_code == 200
+        assert 'event: exit\ndata: {"code": 0}' in write_file.text
+
+        diff = client.post(
+            f"/sandbox/{created_body['sandbox_id']}/exec",
+            headers=headers,
+            json={"command": ["safe-run", "diff"], "timeout": 30},
+        )
+
+        assert diff.status_code == 200
+        assert "created f.txt" in diff.text
+    finally:
+        if created_body:
+            try:
+                docker_client.containers.get(created_body["container_id"]).remove(force=True)
+            except NotFound:
+                pass
+
+
 def test_reconciliation_removes_orphan_managed_container(monkeypatch, tmp_path: Path) -> None:
     """Startup reconciliation should remove managed containers without DB rows."""
     docker_client = docker_client_or_skip()

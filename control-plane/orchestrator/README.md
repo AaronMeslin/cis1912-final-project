@@ -13,9 +13,10 @@ The current implementation supports local Docker sandbox lifecycle:
 - `POST /sandbox/create` to create a real `saep-sandbox:local` container
 - `GET /sandbox/:id/health` to inspect container state
 - `DELETE /sandbox/:id` to remove the container and registry row
+- `POST /sandbox/:id/exec` to stream command output from a sandbox
 - Startup reconciliation for stale registry rows and orphaned managed containers
 
-SSE exec streaming and Worker proxy integration are planned follow-up phases. `POST /sandbox/:id/exec` intentionally still returns `501 Not Implemented`.
+Worker proxy integration is a planned follow-up phase.
 
 ## Run locally
 
@@ -51,3 +52,26 @@ curl http://127.0.0.1:9999/sandbox/$SANDBOX_ID/health \
 curl -X DELETE http://127.0.0.1:9999/sandbox/$SANDBOX_ID \
   -H "X-SAEP-Internal-Token: dev-internal-token"
 ```
+
+## Command execution
+
+Commands are sent as JSON arrays and streamed back as server-sent events:
+
+```bash
+curl -N -X POST http://127.0.0.1:9999/sandbox/$SANDBOX_ID/exec \
+  -H "X-SAEP-Internal-Token: dev-internal-token" \
+  -H "Content-Type: application/json" \
+  -d '{"command":["safe-run","run","python3","-c","print(\"hi\")"],"timeout":30}'
+```
+
+Example response:
+
+```text
+event: output
+data: {"line": "hi\n", "stream": "stdout"}
+
+event: exit
+data: {"code": 0}
+```
+
+Only one command can run in a sandbox at a time. Concurrent exec requests for the same sandbox return `409 sandbox_busy` so `safe-run` snapshots cannot overwrite each other.

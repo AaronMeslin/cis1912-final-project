@@ -4,7 +4,7 @@ import importlib
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-from orchestrator.docker_client import ContainerHandle, ContainerHealth
+from orchestrator.docker_client import ContainerHandle, ContainerHealth, ExecExit, ExecOutput
 
 
 class FakeDockerClient:
@@ -28,6 +28,10 @@ class FakeDockerClient:
 
     def destroy_container(self, container_id: str) -> None:
         self.destroyed.append(container_id)
+
+    def exec_command(self, container_id: str, command: list[str], timeout_seconds: int):
+        yield ExecOutput(stream="stdout", data=f"ran {' '.join(command)}\n")
+        yield ExecExit(code=0)
 
 
 def load_app(monkeypatch, tmp_path: Path, fake_client: FakeDockerClient | None = None):
@@ -118,16 +122,47 @@ def test_missing_sandbox_returns_404(monkeypatch, tmp_path: Path) -> None:
     assert deleted.json()["detail"]["error"] == "not_found"
 
 
-def test_exec_route_remains_placeholder(monkeypatch, tmp_path: Path) -> None:
-    """Phase 2 intentionally leaves exec for the locking/SSE phase."""
+def test_exec_route_streams_sse(monkeypatch, tmp_path: Path) -> None:
+    """The exec route should stream Docker output events as SSE frames."""
     app = load_app(monkeypatch, tmp_path)
     client = TestClient(app)
     headers = {"X-SAEP-Internal-Token": "test-token"}
+    created = client.post("/sandbox/create", headers=headers).json()
 
-    response = client.post("/sandbox/sandbox-1/exec", headers=headers, json={"command": ["echo", "hi"]})
+    response = client.post(
+        f"/sandbox/{created['sandbox_id']}/exec",
+        headers=headers,
+        json={"command": ["echo", "hi"], "timeout": 30},
+    )
 
-    assert response.status_code == 501
-    assert response.json()["detail"]["error"] == "not_implemented"
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert 'event: output\ndata: {"line": "ran echo hi\\n", "stream": "stdout"}' in response.text
+    assert 'event: exit\ndata: {"code": 0}' in response.text
+
+
+def test_exec_route_rejects_concurrent_command(monkeypatch, tmp_path: Path) -> None:
+    """A second command for the same sandbox should fail with 409."""
+    app = load_app(monkeypatch, tmp_path)
+    client = TestClient(app)
+    headers = {"X-SAEP-Internal-Token": "test-token"}
+    created = client.post("/sandbox/create", headers=headers).json()
+
+    import orchestrator.main as main
+
+    lock_context = main.exec_locks.acquire(created["sandbox_id"])
+    lock_context.__enter__()
+    try:
+        response = client.post(
+            f"/sandbox/{created['sandbox_id']}/exec",
+            headers=headers,
+            json={"command": ["echo", "hi"], "timeout": 30},
+        )
+    finally:
+        lock_context.__exit__(None, None, None)
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["error"] == "sandbox_busy"
 
 
 def test_sandbox_routes_allow_requests_when_internal_token_unset(monkeypatch, tmp_path: Path) -> None:
