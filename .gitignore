@@ -12,3 +12,8 @@ venv/
 .terraform.tfstate.lock.info
 crash.log
 .DS_Store
+PROJECT_OUTLINE.md
+.saep-orchestrator/
+control-plane/.saep-orchestrator/
+control-plane/orchestrator/*.db
+control-plane/orchestrator/*.sqlite3

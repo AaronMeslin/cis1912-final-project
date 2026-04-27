@@ -1,5 +1,5 @@
 # Sandboxed Agent Execution Platform — developer tasks
-.PHONY: build test dev orchestrator-dev orchestrator-test orchestrator-smoke sandbox-up sandbox-down sandbox-smoke lint
+.PHONY: build test dev orchestrator-dev orchestrator-test orchestrator-smoke orchestrator-up sandbox-up sandbox-down sandbox-smoke lint
 
 IMAGE_NAME ?= saep-sandbox
 IMAGE_TAG ?= local
@@ -34,6 +34,11 @@ orchestrator-smoke:
 	sandbox_id=$$($(PYTHON) -c "import json, sys; print(json.load(open(sys.argv[1]))['sandboxId'])" "$$tmpfile"); \
 	curl -fsS "$(ORCHESTRATOR_URL)/sandboxes/$$sandbox_id/health"; \
 	curl -fsS -X DELETE "$(ORCHESTRATOR_URL)/sandboxes/$$sandbox_id"
+
+orchestrator-up:
+	cd control-plane && \
+	SAEP_INTERNAL_TOKEN=dev-internal-token \
+	uvicorn orchestrator.main:app --host 127.0.0.1 --port 9999 --reload
 
 sandbox-up:
 	docker rm -f $(SANDBOX_CONTAINER) 2>/dev/null || true
