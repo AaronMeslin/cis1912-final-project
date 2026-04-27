@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
-# Sandboxed Agent Execution Platform — agent workspace image (stub build).
-# TODO: Pin distro versions; add non-root user; drop capabilities; seccomp/AppArmor profiles.
+# Sandboxed Agent Execution Platform — agent workspace image.
+# TODO: Pin distro versions; drop capabilities; seccomp/AppArmor profiles.
 
 # -----------------------------------------------------------------------------
 # Stage 1: tooling baseline (optional separate stage for cache + smaller final layer churn)
@@ -62,7 +62,24 @@ FROM tooling AS runtime
 # TODO: seccomp, no-new-privileges, user namespace.
 
 LABEL org.opencontainers.image.title="SAEP Sandbox"
-LABEL org.opencontainers.image.description="Isolated workspace for AI coding agents (stub)"
+LABEL org.opencontainers.image.description="Isolated workspace for AI coding agents"
+
+COPY pyproject.toml /tmp/saep/pyproject.toml
+COPY snapshot /tmp/saep/snapshot
+COPY sandbox/healthcheck.sh /usr/local/bin/saep-healthcheck
+
+RUN chmod +x /usr/local/bin/saep-healthcheck \
+    && python3 -m pip install --break-system-packages /tmp/saep \
+    && groupadd --system agent \
+    && useradd --system --gid agent --home-dir /workspace --shell /bin/bash agent \
+    && mkdir -p /workspace \
+    && chown -R agent:agent /workspace
+
+WORKDIR /workspace
+USER agent
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD ["/usr/local/bin/saep-healthcheck"]
 
 # Default command: keep container alive for `docker exec` workflows; override in orchestration.
 CMD ["bash", "-lc", "echo SAEP sandbox ready; sleep infinity"]

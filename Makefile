@@ -1,5 +1,5 @@
 # Sandboxed Agent Execution Platform — developer tasks
-.PHONY: build test dev sandbox-up sandbox-down lint
+.PHONY: build test dev sandbox-up sandbox-down sandbox-smoke lint
 
 IMAGE_NAME ?= saep-sandbox
 IMAGE_TAG ?= local
@@ -7,7 +7,7 @@ SANDBOX_CONTAINER ?= saep-sandbox-dev
 PYTHON ?= python3
 
 build:
-	docker build -t $(IMAGE_NAME):$(IMAGE_TAG) -f sandbox/Dockerfile sandbox
+	docker build -t $(IMAGE_NAME):$(IMAGE_TAG) -f sandbox/Dockerfile .
 
 test:
 	$(PYTHON) -m compileall -q snapshot
@@ -28,3 +28,9 @@ sandbox-up:
 sandbox-down:
 	docker rm -f $(SANDBOX_CONTAINER) 2>/dev/null || true
 	@echo "Stopped and removed $(SANDBOX_CONTAINER) if it was running."
+
+sandbox-smoke:
+	@tmpdir=$$(mktemp -d); \
+	chmod 777 "$$tmpdir"; \
+	trap 'rm -rf "$$tmpdir"' EXIT; \
+	docker run --rm -v "$$tmpdir:/workspace" $(IMAGE_NAME):$(IMAGE_TAG) bash -lc "set -eu; safe-run run python3 -c \"from pathlib import Path; Path('hello.txt').write_text('hi', encoding='utf-8')\"; safe-run diff | tee /tmp/saep-diff.txt; grep -q 'created hello.txt' /tmp/saep-diff.txt; safe-run undo; test ! -e hello.txt"

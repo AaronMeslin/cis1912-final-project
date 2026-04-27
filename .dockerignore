@@ -2,11 +2,6 @@
 **/.git
 **/.gitignore
 
-# Node
-**/node_modules
-**/npm-debug.log
-**/yarn-error.log
-
 # Python
 **/__pycache__
 **/*.pyc
@@ -15,11 +10,19 @@
 **/.mypy_cache
 **/.pytest_cache
 
+# Node
+**/node_modules
+**/npm-debug.log
+**/yarn-error.log
+
 # IDE / OS
 **/.DS_Store
 **/.idea
 **/.vscode
 
-# Docs and CI not needed inside image build context
-**/*.md
-../.github
+# Files not needed to install the sandbox runtime
+.github
+control-plane
+infra
+tests
+*.md
