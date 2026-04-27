@@ -22,6 +22,8 @@ class Settings:
     workspaces_dir: Path
     internal_token: str | None
     exec_timeout_seconds: int
+    container_memory: str
+    container_cpus: float
 
 
 def load_settings() -> Settings:
@@ -34,4 +36,6 @@ def load_settings() -> Settings:
         workspaces_dir=Path(os.getenv("SAEP_WORKSPACES_DIR", ".saep-orchestrator/workspaces")),
         internal_token=os.getenv("SAEP_INTERNAL_TOKEN") or None,
         exec_timeout_seconds=_int_env("SAEP_EXEC_TIMEOUT_SECONDS", 300),
+        container_memory=os.getenv("SAEP_CONTAINER_MEMORY", "1g"),
+        container_cpus=float(os.getenv("SAEP_CONTAINER_CPUS", "1.0")),
     )

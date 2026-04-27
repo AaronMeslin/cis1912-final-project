@@ -80,6 +80,25 @@ class SandboxRegistry:
             raise RuntimeError(f"failed to insert sandbox {sandbox_id}")
         return record
 
+    def update_container(
+        self,
+        sandbox_id: str,
+        container_id: str,
+        container_name: str,
+        status: str,
+    ) -> bool:
+        """Attach Docker container metadata to an existing sandbox row."""
+        with self._connect() as conn:
+            result = conn.execute(
+                """
+                UPDATE sandboxes
+                SET container_id = ?, container_name = ?, status = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (container_id, container_name, status, utc_now(), sandbox_id),
+            )
+        return result.rowcount > 0
+
     def get_sandbox(self, sandbox_id: str) -> SandboxRecord | None:
         """Look up one sandbox by ID."""
         with self._connect() as conn:

@@ -29,6 +29,11 @@ def test_registry_insert_get_list_update_delete(tmp_path: Path) -> None:
     assert fetched == inserted
     assert registry.list_sandboxes() == [inserted]
 
+    assert registry.update_container("sandbox-1", "container-2", "saep-sandbox-2", "running")
+    with_container = registry.get_sandbox("sandbox-1")
+    assert with_container is not None
+    assert with_container.container_id == "container-2"
+    assert with_container.container_name == "saep-sandbox-2"
     assert registry.update_status("sandbox-1", "stopping")
     updated = registry.get_sandbox("sandbox-1")
     assert updated is not None
@@ -49,6 +54,8 @@ def test_load_settings_reads_environment(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("SAEP_WORKSPACES_DIR", (tmp_path / "workspaces").as_posix())
     monkeypatch.setenv("SAEP_INTERNAL_TOKEN", "token")
     monkeypatch.setenv("SAEP_EXEC_TIMEOUT_SECONDS", "42")
+    monkeypatch.setenv("SAEP_CONTAINER_MEMORY", "512m")
+    monkeypatch.setenv("SAEP_CONTAINER_CPUS", "0.5")
 
     settings = load_settings()
 
@@ -59,3 +66,5 @@ def test_load_settings_reads_environment(monkeypatch, tmp_path: Path) -> None:
     assert settings.workspaces_dir == tmp_path / "workspaces"
     assert settings.internal_token == "token"
     assert settings.exec_timeout_seconds == 42
+    assert settings.container_memory == "512m"
+    assert settings.container_cpus == 0.5

@@ -4,15 +4,18 @@ This directory contains the local Docker-backed backend that the Cloudflare Work
 
 ## Current phase
 
-Phase 1 implements the service skeleton:
+The current implementation supports local Docker sandbox lifecycle:
 
 - FastAPI app
 - `GET /healthz`
 - Internal-token auth for sandbox routes
 - SQLite registry
-- Placeholder sandbox routes returning `501 Not Implemented`
+- `POST /sandbox/create` to create a real `saep-sandbox:local` container
+- `GET /sandbox/:id/health` to inspect container state
+- `DELETE /sandbox/:id` to remove the container and registry row
+- Startup reconciliation for stale registry rows and orphaned managed containers
 
-Docker lifecycle, SSE exec streaming, reconciliation, and Worker proxy integration are planned follow-up phases.
+SSE exec streaming and Worker proxy integration are planned follow-up phases. `POST /sandbox/:id/exec` intentionally still returns `501 Not Implemented`.
 
 ## Run locally
 
@@ -20,6 +23,7 @@ From the repository root:
 
 ```bash
 python3 -m pip install -e ".[orchestrator]"
+make build
 make orchestrator-up
 ```
 
@@ -32,5 +36,18 @@ Sandbox routes require `X-SAEP-Internal-Token` when `SAEP_INTERNAL_TOKEN` is set
 ```bash
 curl http://127.0.0.1:9999/healthz
 curl -X POST http://127.0.0.1:9999/sandbox/create \
+  -H "X-SAEP-Internal-Token: dev-internal-token"
+```
+
+## Lifecycle routes
+
+```bash
+SANDBOX_ID=$(curl -s -X POST http://127.0.0.1:9999/sandbox/create \
+  -H "X-SAEP-Internal-Token: dev-internal-token" | python3 -c "import json,sys; print(json.load(sys.stdin)['sandbox_id'])")
+
+curl http://127.0.0.1:9999/sandbox/$SANDBOX_ID/health \
+  -H "X-SAEP-Internal-Token: dev-internal-token"
+
+curl -X DELETE http://127.0.0.1:9999/sandbox/$SANDBOX_ID \
   -H "X-SAEP-Internal-Token: dev-internal-token"
 ```
