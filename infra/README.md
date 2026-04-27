@@ -4,6 +4,8 @@
 
 This directory holds **Infrastructure as Code** for the platform: primarily **Cloudflare** (Workers, DNS, optional KV/D1) and, later, whatever runs **Docker** sandboxes at scale (VMs, Kubernetes, Nomad—TBD). The current [`main.tf`](main.tf) is a **stub**: it pins the Cloudflare provider and uses a `terraform_data` placeholder so `terraform init` / `plan` can run without creating real cloud resources.
 
+The current project status is intentionally local-first: snapshot and Docker sandbox behavior are tested locally and in CI, while cloud resources and production sandbox hosting remain future work.
+
 ## Files in this directory
 
 | File | Role |

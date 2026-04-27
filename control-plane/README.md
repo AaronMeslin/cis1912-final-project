@@ -6,6 +6,8 @@ This Worker is the **HTTP control plane** between AI agents (or a broker) and **
 
 Production shape will call a **sandbox orchestrator** (Docker socket API, remote agent, Kubernetes, etc.) using URLs and secrets from Terraform / Wrangler.
 
+The Docker sandbox runtime now exists and is smoke-tested in CI, so the next control-plane milestone is to replace the placeholder registry behavior with calls to a local Docker-backed orchestrator.
+
 ## Files in this directory
 
 | File | Role |
@@ -46,6 +48,7 @@ Environment variables from `[vars]` in `wrangler.toml` appear on `env` in the Wo
 
 ## Tasks to implement
 
+- [x] Stub routes for create, destroy, and health
 - [ ] Replace in-memory `sandboxRegistry` with D1, KV, or external service
 - [ ] Implement real create/destroy against Docker/orchestrator (`SANDBOX_ORCHESTRATOR_URL`)
 - [ ] Add authentication (Bearer token, CF Access, or signed requests)

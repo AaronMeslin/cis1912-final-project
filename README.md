@@ -33,6 +33,12 @@ This project lets AI coding agents run commands and scripts inside **isolated Do
 
 Flow in words: the **agent** asks the **control plane** to create or use a sandbox; execution and file changes happen in the **sandbox**; the **snapshot engine** records state, diffs changes, and rolls back on demand.
 
+## Current status
+
+The project is in a **local vertical-slice** stage. The snapshot engine is usable and well-tested, and the Docker sandbox now builds a non-root runtime image with `safe-run`, Node, Python, Git, and headless Chromium. CI verifies the snapshot suite, Docker build, Docker smoke path, and Terraform scaffold.
+
+The next major milestone is orchestration: connect the Cloudflare Worker control plane to a local Docker-backed sandbox service so `POST /sandbox/create`, `GET /sandbox/:id/health`, and `DELETE /sandbox/:id` manage real containers instead of returning in-memory placeholders.
+
 ## Component documentation
 
 | Component | README |
@@ -65,7 +71,8 @@ Flow in words: the **agent** asks the **control plane** to create or use a sandb
 
 ### Control Plane (Cloudflare Workers)
 
-- [ ] Sandbox lifecycle: create, start, stop, destroy
+- [x] Stub lifecycle routes: create, health, destroy
+- [ ] Real Docker-backed sandbox lifecycle: create, start, stop, destroy
 - [ ] Session streaming
 - [ ] Health checks and resource tracking
 - [ ] Local testing with Miniflare
@@ -87,6 +94,12 @@ Flow in words: the **agent** asks the **control plane** to create or use a sandb
 - [ ] Session health and lifecycle logging
 - [ ] Resource usage metrics (CPU, memory, disk)
 - [ ] Execution result tracking
+
+## Suggested next steps
+
+1. **Control plane to Docker:** add a minimal local orchestrator that can create, inspect, and remove sandbox containers, then have the Worker call it via `SANDBOX_ORCHESTRATOR_URL`.
+2. **Snapshot hardening:** add a run lock for concurrent `safe-run` executions plus large/sparse file coverage.
+3. **Sandbox hardening:** document and test runtime flags for network policy, read-only root filesystem, tmpfs, dropped capabilities, and resource limits.
 
 ## Local development setup
 

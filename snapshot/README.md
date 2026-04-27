@@ -28,6 +28,7 @@ The CLI entrypoint is [`safe_run.py`](safe_run.py). Run it with `python3 -m snap
 - **Manifest validation**: loaded snapshots reject absolute paths, parent traversal, `.git/` or `.saep/` entries, malformed entry metadata, and invalid blob digests.
 - **Rollback preflight**: rollback validates all manifest entries and checks file blob existence and SHA-256 integrity before mutating the workspace.
 - **CLI staging**: `safe-run run` creates the pre-command snapshot in a temporary store first, then publishes it into `.saep/` after the command exits so the wrapped process cannot delete or redirect the current snapshot metadata before state is persisted.
+- **Docker integration**: the sandbox image installs `safe-run`; the Docker smoke test mounts a throwaway workspace and verifies `run`, `diff`, and `undo` inside the container.
 
 ## Usage
 
@@ -99,4 +100,4 @@ cat file.txt      # before
 - [x] Add pytest suite: symlinks, hidden files, rollback, CLI round trip, safety regressions
 - [ ] Add timeout/env whitelist to subprocess execution
 - [ ] Add large binary and concurrency tests
-- [ ] Document integration with Docker (snapshot runs on host volume bind-mounted into sandbox)
+- [x] Document integration with Docker (snapshot runs on host volume bind-mounted into sandbox)
