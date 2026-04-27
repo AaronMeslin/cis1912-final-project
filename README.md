@@ -1,6 +1,6 @@
 # Sandboxed Agent Execution Platform
 
-This project lets AI coding agents run commands and scripts inside **isolated Docker sandboxes**, with a **snapshot / diff / rollback** layer so workspace changes can be reviewed and undone before they are committed or propagated. A **Cloudflare Workers** control plane (stubbed) will eventually orchestrate sandbox lifecycle, health, and streaming; **Terraform** will wire cloud resources. The snapshot CLI has a working first vertical slice, and the Docker image now installs that CLI for in-container smoke testing. The control plane and infra are still scaffolds.
+This project lets AI coding agents run commands and scripts inside **isolated Docker sandboxes**, with a **snapshot / diff / rollback** layer so workspace changes can be reviewed and undone before they are committed or propagated. A **Cloudflare Workers** control plane calls a local Docker-backed orchestrator for sandbox lifecycle, health, and teardown. **Terraform** will wire cloud resources later.
 
 ## Architecture
 
@@ -35,9 +35,9 @@ Flow in words: the **agent** asks the **control plane** to create or use a sandb
 
 ## Current status
 
-The project is in a **local vertical-slice** stage. The snapshot engine is usable and well-tested, and the Docker sandbox now builds a non-root runtime image with `safe-run`, Node, Python, Git, and headless Chromium. CI verifies the snapshot suite, Docker build, Docker smoke path, and Terraform scaffold.
+The project is in a **local vertical-slice** stage. The snapshot engine is usable and well-tested, the Docker sandbox builds a non-root runtime image with `safe-run`, Node, Python, Git, and headless Chromium, and the control plane now proxies lifecycle routes to a local orchestrator.
 
-The next major milestone is orchestration: connect the Cloudflare Worker control plane to a local Docker-backed sandbox service so `POST /sandbox/create`, `GET /sandbox/:id/health`, and `DELETE /sandbox/:id` manage real containers instead of returning in-memory placeholders.
+The next major milestone is session execution/streaming once Docker-backed sandbox lifecycle is stable.
 
 ## Component documentation
 
@@ -72,9 +72,10 @@ The next major milestone is orchestration: connect the Cloudflare Worker control
 ### Control Plane (Cloudflare Workers)
 
 - [x] Stub lifecycle routes: create, health, destroy
-- [ ] Real Docker-backed sandbox lifecycle: create, start, stop, destroy
+- [x] Docker-backed sandbox lifecycle: create, health, destroy through local orchestrator
 - [ ] Session streaming
-- [ ] Health checks and resource tracking
+- [x] Health checks through Docker inspect
+- [ ] Resource usage tracking
 - [ ] Local testing with Miniflare
 
 ### Infrastructure (Terraform)
@@ -97,7 +98,7 @@ The next major milestone is orchestration: connect the Cloudflare Worker control
 
 ## Suggested next steps
 
-1. **Control plane to Docker:** add a minimal local orchestrator that can create, inspect, and remove sandbox containers, then have the Worker call it via `SANDBOX_ORCHESTRATOR_URL`.
+1. **Session execution:** add `POST /sandbox/:id/exec` or a streaming transport so commands can run inside managed sandboxes.
 2. **Snapshot hardening:** add a run lock for concurrent `safe-run` executions plus large/sparse file coverage.
 3. **Sandbox hardening:** document and test runtime flags for network policy, read-only root filesystem, tmpfs, dropped capabilities, and resource limits.
 
@@ -115,6 +116,9 @@ The next major milestone is orchestration: connect the Cloudflare Worker control
 make build          # Build the sandbox Docker image
 make test           # Run snapshot Python compile check + pytest suite
 make sandbox-smoke  # Run safe-run diff/undo inside the Docker sandbox
+make orchestrator-dev    # Start local Docker-backed sandbox orchestrator
+make orchestrator-test   # Run orchestrator and Worker contract tests
+make orchestrator-smoke  # Create, health-check, and destroy a sandbox through the orchestrator
 make dev            # Start the control plane locally (Wrangler dev)
 make sandbox-up     # Optional: run sandbox container (see Makefile)
 make sandbox-down   # Tear down sandbox container
@@ -139,6 +143,23 @@ npx wrangler dev     # or: npx miniflare src/index.ts (depending on setup)
 ```
 
 The Worker entrypoint is [control-plane/src/index.ts](control-plane/src/index.ts). See [control-plane/README.md](control-plane/README.md) for routes and env vars.
+
+### Docker-backed sandbox lifecycle
+
+In one shell, start the local orchestrator:
+
+```bash
+make build
+make orchestrator-dev
+```
+
+In another shell, smoke test lifecycle:
+
+```bash
+make orchestrator-smoke
+```
+
+With the Worker running through `make dev`, its `POST /sandbox/create`, `GET /sandbox/:id/health`, and `DELETE /sandbox/:id` routes proxy to the same orchestrator via `SANDBOX_ORCHESTRATOR_URL`.
 
 ### Snapshot CLI
 
@@ -165,6 +186,3 @@ Expected output includes `created hello.txt` from `diff` and `removed hello.txt`
 
 See [infra/README.md](infra/README.md) for `terraform init` / `plan` / `apply`. Do not commit API tokens; use `TF_VAR_*` or a secrets backend in real use.
 
-## License
-
-Specify a license when the project ships (not set in this scaffold).

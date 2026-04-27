@@ -16,9 +16,10 @@ dev = [
 
 [project.scripts]
 safe-run = "snapshot.safe_run:main"
+saep-orchestrator = "orchestrator.server:main"
 
 [tool.setuptools]
-packages = ["snapshot"]
+packages = ["orchestrator", "snapshot"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
