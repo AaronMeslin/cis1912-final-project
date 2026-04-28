@@ -13,7 +13,7 @@ def test_dockerfile_installs_safe_run_and_uses_non_root_agent() -> None:
 
     assert "COPY pyproject.toml /tmp/saep/pyproject.toml" in dockerfile
     assert "COPY snapshot /tmp/saep/snapshot" in dockerfile
-    assert "COPY orchestrator /tmp/saep/orchestrator" in dockerfile
+    assert "COPY orchestrator /tmp/saep/orchestrator" not in dockerfile
     assert "python3 -m pip install --break-system-packages /tmp/saep" in dockerfile
     assert "useradd --system --gid agent --home-dir /workspace --shell /bin/bash agent" in dockerfile
     assert "chown -R agent:agent /workspace" in dockerfile

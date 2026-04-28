@@ -66,7 +66,6 @@ LABEL org.opencontainers.image.description="Isolated workspace for AI coding age
 
 COPY pyproject.toml /tmp/saep/pyproject.toml
 COPY snapshot /tmp/saep/snapshot
-COPY orchestrator /tmp/saep/orchestrator
 COPY sandbox/healthcheck.sh /usr/local/bin/saep-healthcheck
 
 RUN chmod +x /usr/local/bin/saep-healthcheck \

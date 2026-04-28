@@ -117,9 +117,7 @@ The next major milestone is packaging the demo and CI flow around the local end-
 make build          # Build the sandbox Docker image
 make test           # Run snapshot Python compile check + pytest suite
 make sandbox-smoke  # Run safe-run diff/undo inside the Docker sandbox
-make orchestrator-dev    # Start the simple top-level lifecycle orchestrator
-make orchestrator-test   # Run orchestrator and Worker contract tests
-make orchestrator-smoke  # Create, health-check, and destroy through the simple orchestrator
+make orchestrator-test   # Run FastAPI orchestrator and Worker contract tests
 make orchestrator-up     # Start the Worker-compatible FastAPI orchestrator
 make e2e-smoke           # Run Worker → orchestrator → Docker → safe-run smoke test
 make dev                 # Start the control plane locally (Wrangler dev)
@@ -183,18 +181,7 @@ The Worker entrypoint is [control-plane/src/index.ts](control-plane/src/index.ts
 
 ### Docker-backed sandbox lifecycle
 
-There are currently two local orchestrator entrypoints:
-
-- `make orchestrator-dev` starts the top-level lifecycle orchestrator (`POST /sandboxes`, `GET /sandboxes/:id/health`, `DELETE /sandboxes/:id`).
-- `make orchestrator-up` starts the Worker-compatible FastAPI orchestrator (`POST /sandbox/create`, `POST /sandbox/:id/exec`, health, and delete) used by the e2e smoke path.
-
-For the simple lifecycle smoke test:
-
-```bash
-make build
-make orchestrator-dev
-make orchestrator-smoke
-```
+`make orchestrator-up` starts the single supported local orchestrator: the FastAPI backend used by the Worker and e2e smoke path. It exposes sandbox create, health, exec streaming, and delete routes under `/sandbox/...`.
 
 Example public Worker API calls:
 

@@ -1,39 +1,27 @@
 # Sandboxed Agent Execution Platform — developer tasks
-.PHONY: build test dev orchestrator-dev orchestrator-test orchestrator-smoke orchestrator-up e2e-smoke sandbox-up sandbox-down sandbox-smoke lint
+.PHONY: build test dev orchestrator-test orchestrator-up e2e-smoke sandbox-up sandbox-down sandbox-smoke lint
 
 IMAGE_NAME ?= saep-sandbox
 IMAGE_TAG ?= local
 SANDBOX_CONTAINER ?= saep-sandbox-dev
-ORCHESTRATOR_URL ?= http://127.0.0.1:9999
 PYTHON ?= python3
 
 build:
 	docker build -t $(IMAGE_NAME):$(IMAGE_TAG) -f sandbox/Dockerfile .
 
 test:
-	$(PYTHON) -m compileall -q snapshot orchestrator
-	$(PYTHON) -m pytest tests/snapshot tests/sandbox tests/orchestrator tests/control_plane
+	$(PYTHON) -m compileall -q snapshot control-plane/orchestrator
+	$(PYTHON) -m pytest tests/snapshot tests/sandbox tests/control_plane
 
 lint:
 	@echo "TODO: add ruff/black when pyproject.toml exists"
-	$(PYTHON) -m compileall -q snapshot orchestrator
+	$(PYTHON) -m compileall -q snapshot control-plane/orchestrator
 
 dev:
 	cd control-plane && npx wrangler dev
 
-orchestrator-dev:
-	saep-orchestrator
-
 orchestrator-test:
-	$(PYTHON) -m pytest tests/orchestrator tests/control_plane
-
-orchestrator-smoke:
-	@tmpfile=$$(mktemp); \
-	trap 'rm -f "$$tmpfile"' EXIT; \
-	curl -fsS -X POST "$(ORCHESTRATOR_URL)/sandboxes" > "$$tmpfile"; \
-	sandbox_id=$$($(PYTHON) -c "import json, sys; print(json.load(open(sys.argv[1]))['sandboxId'])" "$$tmpfile"); \
-	curl -fsS "$(ORCHESTRATOR_URL)/sandboxes/$$sandbox_id/health"; \
-	curl -fsS -X DELETE "$(ORCHESTRATOR_URL)/sandboxes/$$sandbox_id"
+	$(PYTHON) -m pytest tests/control_plane
 
 orchestrator-up:
 	cd control-plane && \
