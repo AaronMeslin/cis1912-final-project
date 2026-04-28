@@ -145,7 +145,22 @@ make build
 make e2e-smoke PYTHON=.venv/bin/python
 ```
 
-The smoke test starts the local FastAPI orchestrator on `127.0.0.1:9999`, starts Wrangler on `127.0.0.1:8787`, calls the Worker API to create a sandbox, runs `safe-run run` to create `f.txt`, runs `safe-run diff`, verifies `created f.txt`, and destroys the sandbox.
+The `make e2e-smoke` target runs pytest with live logs enabled (`-s`), so you should see `[e2e] ...` progress messages in your terminal. The smoke test:
+
+1. Checks Docker is running and `saep-sandbox:local` exists
+2. Starts the local FastAPI orchestrator on `127.0.0.1:9999`
+3. Starts Wrangler on `127.0.0.1:8787`
+4. Calls the Worker API to create a sandbox
+5. Runs `safe-run run` inside the sandbox to create `f.txt`
+6. Runs `safe-run diff` and verifies `created f.txt`
+7. Deletes the sandbox and stops both local processes
+
+Expected final output:
+
+```text
+[e2e] SAEP e2e smoke test completed successfully
+1 passed
+```
 
 If the sandbox image is missing, the e2e test skips with `run make build first`.
 

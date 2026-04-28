@@ -41,7 +41,7 @@ orchestrator-up:
 	uvicorn orchestrator.main:app --host 127.0.0.1 --port 9999 --reload
 
 e2e-smoke:
-	$(PYTHON) -m pytest tests/e2e -m e2e
+	$(PYTHON) -m pytest -s tests/e2e -m e2e
 
 sandbox-up:
 	docker rm -f $(SANDBOX_CONTAINER) 2>/dev/null || true
