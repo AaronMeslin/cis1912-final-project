@@ -1,6 +1,6 @@
 # Sandboxed Agent Execution Platform
 
-This project lets AI coding agents run commands and scripts inside **isolated Docker sandboxes**, with a **snapshot / diff / rollback** layer so workspace changes can be reviewed and undone before they are committed or propagated. A **Cloudflare Workers** control plane calls a local Docker-backed orchestrator for sandbox lifecycle, health, and teardown. **Terraform** will wire cloud resources later.
+This project lets AI coding agents run commands and scripts inside **isolated Docker sandboxes**, with a **snapshot / diff / rollback** layer so workspace changes can be reviewed and undone before they are committed or propagated. A local **Cloudflare Workers** control plane now authenticates and proxies sandbox lifecycle, health, and command-exec requests to a Docker-backed orchestrator; **Terraform** will wire cloud resources later. The snapshot CLI, Docker image, local orchestrator, Worker proxy, and end-to-end smoke path are working locally.
 
 ## Architecture
 
@@ -31,13 +31,13 @@ This project lets AI coding agents run commands and scripts inside **isolated Do
     +-------------------+
 ```
 
-Flow in words: the **agent** asks the **control plane** to create or use a sandbox; execution and file changes happen in the **sandbox**; the **snapshot engine** records state, diffs changes, and rolls back on demand.
+Flow in words: the **agent** asks the **control plane** to create or use a sandbox; the Worker proxies to the local orchestrator; execution and file changes happen in the **sandbox**; the **snapshot engine** records state, diffs changes, and rolls back on demand.
 
 ## Current status
 
-The project is in a **local vertical-slice** stage. The snapshot engine is usable and well-tested, the Docker sandbox builds a non-root runtime image with `safe-run`, Node, Python, Git, and headless Chromium, and the control plane now proxies lifecycle routes to a local orchestrator.
+The project is in a **local vertical-slice** stage. The snapshot engine is usable and well-tested, and the Docker sandbox builds a non-root runtime image with `safe-run`, Node, Python, Git, and headless Chromium. The local control plane now supports the full path: Wrangler Worker → FastAPI orchestrator → Docker sandbox → `safe-run`.
 
-The next major milestone is session execution/streaming once Docker-backed sandbox lifecycle is stable.
+The next major milestone is packaging the demo and CI flow around the local end-to-end smoke test, then adding the GitHub PR demo task.
 
 ## Component documentation
 
@@ -72,11 +72,11 @@ The next major milestone is session execution/streaming once Docker-backed sandb
 ### Control Plane (Cloudflare Workers)
 
 - [x] Stub lifecycle routes: create, health, destroy
-- [x] Docker-backed sandbox lifecycle: create, health, destroy through local orchestrator
-- [ ] Session streaming
-- [x] Health checks through Docker inspect
+- [x] Real Docker-backed sandbox lifecycle: create, start, stop, destroy
+- [x] SSE command-output streaming via `/sandbox/:id/exec`
+- [x] Health checks through the local Docker orchestrator
+- [x] Local testing with Wrangler / local Workers runtime
 - [ ] Resource usage tracking
-- [ ] Local testing with Miniflare
 
 ### Infrastructure (Terraform)
 
@@ -86,9 +86,10 @@ The next major milestone is session execution/streaming once Docker-backed sandb
 ### CI/CD
 
 - [x] Docker sandbox build and `safe-run` smoke test
-- [ ] Integration tests for sandbox spin-up/teardown
+- [x] Integration tests for sandbox spin-up/teardown
 - [x] Automated diff/rollback tests
 - [x] GitHub Actions workflow
+- [ ] CI job for full Worker → orchestrator → Docker e2e smoke
 
 ### Observability
 
@@ -98,8 +99,8 @@ The next major milestone is session execution/streaming once Docker-backed sandb
 
 ## Suggested next steps
 
-1. **Session execution:** add `POST /sandbox/:id/exec` or a streaming transport so commands can run inside managed sandboxes.
-2. **Snapshot hardening:** add a run lock for concurrent `safe-run` executions plus large/sparse file coverage.
+1. **End-to-end demo:** use the local Worker API to create a sandbox, execute a coding task, inspect `safe-run diff`, and clean up.
+2. **CI e2e hardening:** run the full Worker → orchestrator → Docker smoke test in GitHub Actions after building the sandbox image.
 3. **Sandbox hardening:** document and test runtime flags for network policy, read-only root filesystem, tmpfs, dropped capabilities, and resource limits.
 
 ## Local development setup
@@ -116,10 +117,12 @@ The next major milestone is session execution/streaming once Docker-backed sandb
 make build          # Build the sandbox Docker image
 make test           # Run snapshot Python compile check + pytest suite
 make sandbox-smoke  # Run safe-run diff/undo inside the Docker sandbox
-make orchestrator-dev    # Start local Docker-backed sandbox orchestrator
+make orchestrator-dev    # Start the simple top-level lifecycle orchestrator
 make orchestrator-test   # Run orchestrator and Worker contract tests
-make orchestrator-smoke  # Create, health-check, and destroy a sandbox through the orchestrator
-make dev            # Start the control plane locally (Wrangler dev)
+make orchestrator-smoke  # Create, health-check, and destroy through the simple orchestrator
+make orchestrator-up     # Start the Worker-compatible FastAPI orchestrator
+make e2e-smoke           # Run Worker → orchestrator → Docker → safe-run smoke test
+make dev                 # Start the control plane locally (Wrangler dev)
 make sandbox-up     # Optional: run sandbox container (see Makefile)
 make sandbox-down   # Tear down sandbox container
 ```
@@ -128,38 +131,86 @@ For a fresh local Python environment:
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install -e ".[dev]"
+.venv/bin/python -m pip install -e ".[dev,orchestrator]"
 make test PYTHON=.venv/bin/python
 ```
 
-### Control plane (Miniflare / Wrangler)
+### Full local end-to-end smoke test
 
-From `control-plane/`:
+This verifies the public local Worker API all the way through Docker and `safe-run`:
+
+```bash
+.venv/bin/python -m pip install -e ".[dev,orchestrator]"
+make build
+make e2e-smoke PYTHON=.venv/bin/python
+```
+
+The `make e2e-smoke` target runs pytest with live logs enabled (`-s`), so you should see `[e2e] ...` progress messages in your terminal. The smoke test:
+
+1. Checks Docker is running and `saep-sandbox:local` exists
+2. Starts the local FastAPI orchestrator on `127.0.0.1:9999`
+3. Starts Wrangler on `127.0.0.1:8787`
+4. Calls the Worker API to create a sandbox
+5. Runs `safe-run run` inside the sandbox to create `f.txt`
+6. Runs `safe-run diff` and verifies `created f.txt`
+7. Deletes the sandbox and stops both local processes
+
+Expected final output:
+
+```text
+[e2e] SAEP e2e smoke test completed successfully
+1 passed
+```
+
+If the sandbox image is missing, the e2e test skips with `run make build first`.
+
+### Manual control plane testing (Wrangler + local orchestrator)
+
+In terminal 1:
+
+```bash
+make orchestrator-up
+```
+
+In terminal 2:
 
 ```bash
 cd control-plane
-npm install          # once a package.json exists; until then use npx wrangler
-npx wrangler dev     # or: npx miniflare src/index.ts (depending on setup)
+npx wrangler dev
 ```
 
 The Worker entrypoint is [control-plane/src/index.ts](control-plane/src/index.ts). See [control-plane/README.md](control-plane/README.md) for routes and env vars.
 
 ### Docker-backed sandbox lifecycle
 
-In one shell, start the local orchestrator:
+There are currently two local orchestrator entrypoints:
+
+- `make orchestrator-dev` starts the top-level lifecycle orchestrator (`POST /sandboxes`, `GET /sandboxes/:id/health`, `DELETE /sandboxes/:id`).
+- `make orchestrator-up` starts the Worker-compatible FastAPI orchestrator (`POST /sandbox/create`, `POST /sandbox/:id/exec`, health, and delete) used by the e2e smoke path.
+
+For the simple lifecycle smoke test:
 
 ```bash
 make build
 make orchestrator-dev
-```
-
-In another shell, smoke test lifecycle:
-
-```bash
 make orchestrator-smoke
 ```
 
-With the Worker running through `make dev`, its `POST /sandbox/create`, `GET /sandbox/:id/health`, and `DELETE /sandbox/:id` routes proxy to the same orchestrator via `SANDBOX_ORCHESTRATOR_URL`.
+Example public Worker API calls:
+
+```bash
+curl -s -X POST http://127.0.0.1:8787/sandbox/create \
+  -H "Authorization: Bearer dev-api-key"
+
+curl -N -X POST http://127.0.0.1:8787/sandbox/<id>/exec \
+  -H "Authorization: Bearer dev-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"command":["safe-run","diff"],"timeout":30}'
+
+curl -s -X DELETE http://127.0.0.1:8787/sandbox/<id> \
+  -H "Authorization: Bearer dev-api-key"
+```
+
 
 ### Snapshot CLI
 

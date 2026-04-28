@@ -2,54 +2,68 @@
 
 ## What this component is
 
-This Worker is the **HTTP control plane** between AI agents (or a broker) and **sandbox instances**. It exposes lifecycle and health endpoints and proxies them to the local Docker-backed orchestrator configured by `SANDBOX_ORCHESTRATOR_URL`.
+This Worker is the **HTTP control plane** between AI agents (or a broker) and **sandbox instances**. It authenticates public API requests and proxies lifecycle, health, and exec calls to the local Docker-backed orchestrator in [`orchestrator/`](orchestrator/).
 
-Production shape will use the same boundary with a remote sandbox orchestrator or managed compute backend.
+Production shape will call a reachable **sandbox orchestrator** (Docker socket API, remote agent, Kubernetes, etc.) using URLs and secrets from Terraform / Wrangler.
 
-The local orchestrator API is:
-
-| Method | Path | Behavior |
-|--------|------|----------|
-| `POST` | `/sandboxes` | Create and start a Docker sandbox |
-| `GET` | `/sandboxes/:id/health` | Inspect sandbox status and Docker health |
-| `DELETE` | `/sandboxes/:id` | Remove the sandbox container |
+For local development, Wrangler serves the Worker on `127.0.0.1:8787` and proxies to the orchestrator on `127.0.0.1:9999`. A deployed Worker cannot reach a developer machine's localhost; production hosting remains future infrastructure work.
 
 ## Files in this directory
 
 | File | Role |
 |------|------|
-| [wrangler.toml](wrangler.toml) | Worker name, entrypoint, compatibility date, stub `vars` |
-| [src/index.ts](src/index.ts) | `fetch` router: create, delete, health through orchestrator |
+| [wrangler.toml](wrangler.toml) | Worker name, entrypoint, compatibility date, local demo `vars` |
+| [src/index.ts](src/index.ts) | `fetch` router: auth + proxy to orchestrator |
+| [orchestrator/](orchestrator/) | Local FastAPI + Docker backend |
 
 ## HTTP API
 
-| Method | Path | Behavior |
-|--------|------|-------------------|
-| `POST` | `/sandbox/create` | Proxy to `POST /sandboxes`; return `sandboxId` |
-| `DELETE` | `/sandbox/:id` | Proxy to `DELETE /sandboxes/:id` |
-| `GET` | `/sandbox/:id/health` | Proxy to `GET /sandboxes/:id/health` |
+All sandbox routes require:
 
-TODO: `POST /sandbox/:id/exec` or WebSocket for **session streaming**; `POST` start/stop if lifecycle is split.
+```text
+Authorization: Bearer dev-api-key
+```
+
+| Method | Path | Behavior |
+|--------|------|----------|
+| `POST` | `/sandbox/create` | Proxy sandbox creation to orchestrator |
+| `GET` | `/sandbox/:id/health` | Proxy sandbox health inspection |
+| `POST` | `/sandbox/:id/exec` | Proxy command execution and preserve SSE output |
+| `DELETE` | `/sandbox/:id` | Proxy sandbox teardown |
+
+The repository also includes a top-level lifecycle-only local orchestrator for simple Docker demos. That server exposes `POST /sandboxes`, `GET /sandboxes/:id/health`, and `DELETE /sandboxes/:id`; the Worker-compatible FastAPI orchestrator in this directory exposes the `/sandbox/...` routes above.
 
 ## Local development (Wrangler / Miniflare)
 
-Install dev dependencies once Wrangler is added to a `package.json`, or use `npx`:
+Start the Docker orchestrator first:
+
+```bash
+make orchestrator-up
+```
+
+Then start Wrangler in another terminal:
 
 ```bash
 cd control-plane
 npx wrangler dev
 ```
 
-Wrangler bundles with **Miniflare** for local simulation. Open the URL Wrangler prints (often `http://127.0.0.1:8787`).
-
 Example:
 
 ```bash
-make orchestrator-dev
+curl -s -X POST http://127.0.0.1:8787/sandbox/create \
+  -H "Authorization: Bearer dev-api-key"
 
-curl -s -X POST http://127.0.0.1:8787/sandbox/create
-curl -s http://127.0.0.1:8787/sandbox/<id>/health
-curl -s -X DELETE http://127.0.0.1:8787/sandbox/<id>
+curl -s http://127.0.0.1:8787/sandbox/<id>/health \
+  -H "Authorization: Bearer dev-api-key"
+
+curl -N -X POST http://127.0.0.1:8787/sandbox/<id>/exec \
+  -H "Authorization: Bearer dev-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"command":["echo","hello"],"timeout":30}'
+
+curl -s -X DELETE http://127.0.0.1:8787/sandbox/<id> \
+  -H "Authorization: Bearer dev-api-key"
 ```
 
 Environment variables from `[vars]` in `wrangler.toml` appear on `env` in the Worker. Use `wrangler secret put ...` for tokens (not committed).
@@ -57,11 +71,10 @@ Environment variables from `[vars]` in `wrangler.toml` appear on `env` in the Wo
 ## Tasks to implement
 
 - [x] Stub routes for create, destroy, and health
-- [x] Replace in-memory `sandboxRegistry` with orchestrator calls
-- [x] Implement create/health/destroy against Docker/orchestrator (`SANDBOX_ORCHESTRATOR_URL`)
-- [ ] Add authentication (Bearer token, CF Access, or signed requests)
-- [ ] Session streaming (WebSocket or SSE) for attach/logs
-- [x] Health: container status and Docker health from orchestrator
-- [ ] Resource usage: CPU, memory, disk from orchestrator
+- [x] Replace in-memory `sandboxRegistry` with orchestrator proxying
+- [x] Implement real create/destroy against Docker/orchestrator (`SANDBOX_ORCHESTRATOR_URL`)
+- [x] Add authentication (Bearer token locally; secrets in real deployments)
+- [x] Session streaming via SSE passthrough for command output
+- [x] Health: proxy Docker status + CPU/memory placeholders from orchestrator
 - [ ] Rate limits and per-tenant quotas (Cloudflare rate limiting + metadata)
 - [ ] Integration tests hitting Miniflare or `wrangler dev` in CI

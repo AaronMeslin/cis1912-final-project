@@ -13,6 +13,13 @@ dependencies = []
 dev = [
   "pytest>=8.0",
 ]
+orchestrator = [
+  "docker>=7.0",
+  "fastapi>=0.110",
+  "httpx>=0.27",
+  "pydantic>=2.0",
+  "uvicorn>=0.27",
+]
 
 [project.scripts]
 safe-run = "snapshot.safe_run:main"
@@ -27,4 +34,5 @@ pythonpath = ["."]
 addopts = "-ra"
 markers = [
   "integration: tests that require Docker or other external services",
+  "e2e: full local Worker to orchestrator to Docker smoke tests",
 ]
