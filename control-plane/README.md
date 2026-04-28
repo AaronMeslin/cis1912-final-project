@@ -31,8 +31,6 @@ Authorization: Bearer dev-api-key
 | `POST` | `/sandbox/:id/exec` | Proxy command execution and preserve SSE output |
 | `DELETE` | `/sandbox/:id` | Proxy sandbox teardown |
 
-The repository also includes a top-level lifecycle-only local orchestrator for simple Docker demos. That server exposes `POST /sandboxes`, `GET /sandboxes/:id/health`, and `DELETE /sandboxes/:id`; the Worker-compatible FastAPI orchestrator in this directory exposes the `/sandbox/...` routes above.
-
 ## Local development (Wrangler / Miniflare)
 
 Start the Docker orchestrator first:
