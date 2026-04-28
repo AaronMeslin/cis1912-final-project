@@ -34,4 +34,5 @@ pythonpath = ["."]
 addopts = "-ra"
 markers = [
   "integration: tests that require Docker or other external services",
+  "e2e: full local Worker to orchestrator to Docker smoke tests",
 ]
