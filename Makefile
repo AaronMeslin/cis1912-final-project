@@ -4,6 +4,7 @@
 IMAGE_NAME ?= saep-sandbox
 IMAGE_TAG ?= local
 SANDBOX_CONTAINER ?= saep-sandbox-dev
+SAEP_SANDBOX_IMAGE ?= saep-sandbox:local
 PYTHON ?= python3
 
 build:
@@ -29,7 +30,7 @@ orchestrator-up:
 	uvicorn orchestrator.main:app --host 127.0.0.1 --port 9999 --reload
 
 e2e-smoke:
-	$(PYTHON) -m pytest -s tests/e2e -m e2e
+	SAEP_SANDBOX_IMAGE=$(SAEP_SANDBOX_IMAGE) $(PYTHON) -m pytest -s tests/e2e -m e2e
 
 sandbox-up:
 	docker rm -f $(SANDBOX_CONTAINER) 2>/dev/null || true
