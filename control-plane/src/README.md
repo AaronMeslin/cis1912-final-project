@@ -10,12 +10,4 @@ TypeScript entrypoint for the Cloudflare Worker (`fetch` handler). Bundled by Wr
 |------|------|
 | [index.ts](index.ts) | Auth + proxy routes: create, health, exec, delete |
 
-## Tasks to implement
-
-- [x] Basic routes for sandbox create, destroy, and health
-- [x] Bearer auth for public sandbox routes
-- [x] Proxying to the local orchestrator
-- [x] SSE passthrough for `/sandbox/:id/exec`
-- [ ] Split routers into modules (`sandbox.ts`, `streaming.ts`) as the API grows
-- [ ] Shared types for JSON payloads; zod validation on input
-- [ ] Middleware: request id, structured logging to Workers Analytics / external sink
+The Worker exposes the sandbox create, health, exec, and delete routes used by the local demo and e2e smoke test.

@@ -79,25 +79,6 @@ cat file.txt      # before
 4. Copy the snapshot into `.saep/snapshots/<snapshot_id>/` and write `.saep/state.json`.
 5. User may run `safe-run diff` to review changes; `safe-run undo` restores from the last snapshot id.
 
-## Edge cases to cover in tests
+## Edge case behavior
 
-- [ ] Large files, sparse files (if supported)
-- [x] Symlinks
-- [x] Hidden files and directories
-- [x] Permission bits and executability
-- [x] Malicious manifest paths, malformed entries, missing blobs, and corrupt blobs
-- [x] Commands that delete, replace, or symlink `.saep/` during execution
-- [x] Read-only directories whose children need restoring
-- [ ] Concurrent runs (lock snapshot store)
-
-## Tasks to implement
-
-- [x] Define on-disk snapshot layout and versioning
-- [x] Implement `snapshot.py`: capture tree, exclude patterns, symlink metadata
-- [x] Implement `diff.py`: unified change list (create/modify/delete), symlink and dotfile handling
-- [x] Implement `rollback.py`: restore files and remove paths absent from snapshot
-- [x] Wire `safe_run.py` subprocess execution
-- [x] Add pytest suite: symlinks, hidden files, rollback, CLI round trip, safety regressions
-- [ ] Add timeout/env whitelist to subprocess execution
-- [ ] Add large binary and concurrency tests
-- [x] Document integration with Docker (snapshot runs on host volume bind-mounted into sandbox)
+The snapshot engine tracks regular files by bytes, records symlink targets without following links, includes hidden files by default, and preserves executable permission bits. Manifest loading and rollback validate paths and blob hashes before mutating the workspace, which protects against malformed snapshots and corrupted blob data.

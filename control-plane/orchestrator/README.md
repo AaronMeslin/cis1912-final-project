@@ -2,9 +2,9 @@
 
 This directory contains the local Docker-backed backend that the Cloudflare Worker will proxy to during development and demos. The orchestrator is intentionally separate from `control-plane/src/`, which remains the Worker TypeScript entrypoint.
 
-## Current phase
+## Capabilities
 
-The current implementation supports local Docker sandbox lifecycle:
+The orchestrator supports local Docker sandbox lifecycle:
 
 - FastAPI app
 - `GET /healthz`
@@ -16,8 +16,6 @@ The current implementation supports local Docker sandbox lifecycle:
 - `POST /sandbox/:id/exec` to stream command output from a sandbox
 - Startup reconciliation for stale registry rows and orphaned managed containers
 - Optional workspace seeding with `SAEP_WORKSPACE_SEED_DIR` for repo-like demo sandboxes
-
-Worker proxy integration is a planned follow-up phase.
 
 ## Run locally
 

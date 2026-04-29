@@ -35,7 +35,7 @@ The system is built as a local vertical slice: a Cloudflare Worker control plane
 
 Flow in words: the **agent** asks the **control plane** to create or use a sandbox; the Worker proxies to the local orchestrator; execution and file changes happen in the **sandbox**; the **snapshot engine** records state, diffs changes, and rolls back on demand.
 
-## Component documentation
+## Repository layout
 
 | Component | README |
 |-----------|--------|
@@ -45,54 +45,7 @@ Flow in words: the **agent** asks the **control plane** to create or use a sandb
 | Demo frontend target | [demo-frontend/README.md](demo-frontend/README.md) |
 | Infrastructure (Terraform) | [infra/README.md](infra/README.md) |
 
-## Task checklist
-
-### Docker Sandbox
-
-- [x] Base workspace image with shell, git, Node/Python
-- [x] Headless browser support
-- [x] Non-root runtime user with writable `/workspace`
-- [x] `safe-run` installed inside the sandbox image
-- [x] Sandbox healthcheck and Docker smoke test
-- [ ] Security constraints (network allowlist, read-only mounts)
-- [x] Multi-stage Dockerfile
-
-### Snapshot / Diff / Rollback
-
-- [x] Snapshot working directory before execution
-- [x] Diff engine (created, modified, deleted files, symlinks, hidden files)
-- [x] Rollback system to restore from snapshot
-- [x] CLI: `safe-run <command>`, `safe-run diff`, `safe-run undo`
-- [x] Safety tests for tampered manifests, `.saep` tampering, corrupt blobs, symlinks, hidden files, modes, and read-only directories
-- [ ] Edge case tests: large binaries, sparse files, and concurrent runs
-
-### Control Plane (Cloudflare Workers)
-
-- [x] Stub lifecycle routes: create, health, destroy
-- [x] Real Docker-backed sandbox lifecycle: create, start, stop, destroy
-- [x] SSE command-output streaming via `/sandbox/:id/exec`
-- [x] Health checks through the local Docker orchestrator
-- [x] Local testing with Wrangler / local Workers runtime
-- [ ] Resource usage tracking
-
-### Infrastructure (Terraform)
-
-- [ ] Cloudflare Workers + Docker infra configs
-- [ ] Environment parity between local and cloud
-
-### CI/CD
-
-- [x] Docker sandbox build and `safe-run` smoke test
-- [x] Integration tests for sandbox spin-up/teardown
-- [x] Automated diff/rollback tests
-- [x] GitHub Actions workflow
-- [x] CI job for full Worker → orchestrator → Docker e2e smoke
-
-### Observability
-
-- [ ] Session health and lifecycle logging
-- [ ] Resource usage metrics (CPU, memory, disk)
-- [ ] Execution result tracking
+The repository is organized around the major pieces of the platform: the sandbox image, snapshot engine, control plane, local orchestrator, demo frontend, infrastructure scaffold, and automated tests.
 
 ## Local development setup
 

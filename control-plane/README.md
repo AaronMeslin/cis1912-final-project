@@ -4,9 +4,7 @@
 
 This Worker is the **HTTP control plane** between AI agents (or a broker) and **sandbox instances**. It authenticates public API requests and proxies lifecycle, health, and exec calls to the local Docker-backed orchestrator in [`orchestrator/`](orchestrator/).
 
-Production shape will call a reachable **sandbox orchestrator** (Docker socket API, remote agent, Kubernetes, etc.) using URLs and secrets from Terraform / Wrangler.
-
-For local development, Wrangler serves the Worker on `127.0.0.1:8787` and proxies to the orchestrator on `127.0.0.1:9999`. A deployed Worker cannot reach a developer machine's localhost; production hosting remains future infrastructure work.
+For local development, Wrangler serves the Worker on `127.0.0.1:8787` and proxies to the orchestrator on `127.0.0.1:9999`. Deployment-specific URLs and secrets are configured through Wrangler and Terraform.
 
 ## Files in this directory
 
@@ -65,14 +63,3 @@ curl -s -X DELETE http://127.0.0.1:8787/sandbox/<id> \
 ```
 
 Environment variables from `[vars]` in `wrangler.toml` appear on `env` in the Worker. Use `wrangler secret put ...` for tokens (not committed).
-
-## Tasks to implement
-
-- [x] Stub routes for create, destroy, and health
-- [x] Replace in-memory `sandboxRegistry` with orchestrator proxying
-- [x] Implement real create/destroy against Docker/orchestrator (`SANDBOX_ORCHESTRATOR_URL`)
-- [x] Add authentication (Bearer token locally; secrets in real deployments)
-- [x] Session streaming via SSE passthrough for command output
-- [x] Health: proxy Docker status + CPU/memory placeholders from orchestrator
-- [ ] Rate limits and per-tenant quotas (Cloudflare rate limiting + metadata)
-- [ ] Integration tests hitting Miniflare or `wrangler dev` in CI
