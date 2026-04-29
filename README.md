@@ -1,6 +1,8 @@
 # Sandboxed Agent Execution Platform
 
-This project lets AI coding agents run commands and scripts inside **isolated Docker sandboxes**, with a **snapshot / diff / rollback** layer so workspace changes can be reviewed and undone before they are committed or propagated. A local **Cloudflare Workers** control plane now authenticates and proxies sandbox lifecycle, health, and command-exec requests to a Docker-backed orchestrator; **Terraform** will wire cloud resources later. The snapshot CLI, Docker image, local orchestrator, Worker proxy, and end-to-end smoke path are working locally.
+This project lets AI coding agents run commands inside **isolated Docker sandboxes**. Every run can be snapshotted, diffed, and rolled back before changes are committed or copied back to a real workspace.
+
+The current implementation is a working local vertical slice: a Cloudflare Worker control plane proxies requests to a FastAPI orchestrator, the orchestrator manages Docker sandboxes, and the `safe-run` snapshot engine records file changes. The demo path changes a small static frontend inside the sandbox and returns a reviewable diff.
 
 ## Architecture
 
@@ -33,11 +35,15 @@ This project lets AI coding agents run commands and scripts inside **isolated Do
 
 Flow in words: the **agent** asks the **control plane** to create or use a sandbox; the Worker proxies to the local orchestrator; execution and file changes happen in the **sandbox**; the **snapshot engine** records state, diffs changes, and rolls back on demand.
 
-## Current status
+## What works
 
-The project is in a **local vertical-slice** stage. The snapshot engine is usable and well-tested, and the Docker sandbox builds a non-root runtime image with `safe-run`, Node, Python, Git, and headless Chromium. The local control plane now supports the full path: Wrangler Worker → FastAPI orchestrator → Docker sandbox → `safe-run`.
-
-The next major milestone is packaging the demo and CI flow around the local end-to-end smoke test, then adding the GitHub PR demo task.
+- Docker sandbox image with Python, Node, Git, Bash, and headless Chromium.
+- Snapshot, diff, and rollback through the `safe-run` CLI.
+- FastAPI orchestrator for sandbox lifecycle, health checks, command execution, and cleanup.
+- Cloudflare Worker API for public auth and proxying to the orchestrator.
+- Server-sent event streaming for command output.
+- CI coverage for Python tests, Docker smoke tests, Terraform validation, and the local e2e path.
+- Demo frontend target that proves a sandbox can make a visible UI change and expose it through `safe-run diff`.
 
 ## Component documentation
 
@@ -98,11 +104,9 @@ The next major milestone is packaging the demo and CI flow around the local end-
 - [ ] Resource usage metrics (CPU, memory, disk)
 - [ ] Execution result tracking
 
-## Suggested next steps
+## What is left
 
-1. **End-to-end demo:** use the local Worker API to create a sandbox, execute a coding task, inspect `safe-run diff`, and clean up.
-2. **GitHub PR demo task:** have the agent make a tiny code change inside the sandbox, inspect the diff, and prepare a PR handoff.
-3. **Sandbox hardening:** document and test runtime flags for network policy, read-only root filesystem, tmpfs, dropped capabilities, and resource limits.
+The core platform is working locally. The smallest useful next step is a scripted agent task layer: one command or endpoint that creates a sandbox, runs the demo frontend change, returns `safe-run diff`, and cleans up. Full LLM planning, GitHub PR creation, cloud deployment, and deeper sandbox hardening are natural follow-ups.
 
 ## Local development setup
 
