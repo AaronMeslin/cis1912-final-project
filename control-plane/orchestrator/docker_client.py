@@ -81,7 +81,7 @@ class DockerSandboxClient:
     def create_container(self, sandbox_id: str, workspace_path: Path) -> ContainerHandle:
         """Create and start a sandbox container for one sandbox ID."""
         workspace_path.mkdir(parents=True, exist_ok=True)
-        workspace_path.chmod(0o777)
+        _make_workspace_writable(workspace_path)
         container_name = self.container_name(sandbox_id)
         try:
             container = self.client.containers.run(
@@ -189,3 +189,13 @@ class DockerSandboxClient:
 def _decode_bytes(value: bytes) -> str:
     """Decode Docker output without failing on arbitrary process bytes."""
     return value.decode("utf-8", errors="replace")
+
+
+def _make_workspace_writable(workspace_path: Path) -> None:
+    """Prepare host bind-mount contents for the sandbox's non-root user."""
+    workspace_path.chmod(0o777)
+    for path in workspace_path.rglob("*"):
+        if path.is_dir():
+            path.chmod(0o777)
+        else:
+            path.chmod(0o666)
