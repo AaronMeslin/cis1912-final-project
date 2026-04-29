@@ -1,5 +1,5 @@
 # Sandboxed Agent Execution Platform — developer tasks
-.PHONY: build test dev orchestrator-test orchestrator-up e2e-smoke sandbox-up sandbox-down sandbox-smoke lint
+.PHONY: build test dev orchestrator-test orchestrator-up e2e-smoke demo-task sandbox-up sandbox-down sandbox-smoke lint
 
 IMAGE_NAME ?= saep-sandbox
 IMAGE_TAG ?= local
@@ -12,7 +12,7 @@ build:
 
 test:
 	$(PYTHON) -m compileall -q snapshot control-plane/orchestrator
-	$(PYTHON) -m pytest tests/snapshot tests/sandbox tests/control_plane
+	$(PYTHON) -m pytest tests/snapshot tests/sandbox tests/control_plane tests/scripts
 
 lint:
 	@echo "TODO: add ruff/black when pyproject.toml exists"
@@ -31,6 +31,9 @@ orchestrator-up:
 
 e2e-smoke:
 	SAEP_SANDBOX_IMAGE=$(SAEP_SANDBOX_IMAGE) $(PYTHON) -m pytest -s tests/e2e -m e2e
+
+demo-task:
+	SAEP_SANDBOX_IMAGE=$(SAEP_SANDBOX_IMAGE) $(PYTHON) scripts/run_demo_task.py
 
 sandbox-up:
 	docker rm -f $(SANDBOX_CONTAINER) 2>/dev/null || true

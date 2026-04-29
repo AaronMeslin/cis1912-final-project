@@ -65,6 +65,7 @@ make orchestrator-test   # Run FastAPI orchestrator and Worker contract tests
 make orchestrator-up     # Start the Worker-compatible FastAPI orchestrator
 make e2e-smoke           # Run Worker → orchestrator → Docker → safe-run demo smoke test
 make e2e-smoke SAEP_SANDBOX_IMAGE=saep-sandbox:ci  # Use a specific sandbox image
+make demo-task           # Run the local demo task and print safe-run diff output
 make dev                 # Start the control plane locally (Wrangler dev)
 make sandbox-up     # Optional: run sandbox container (see Makefile)
 make sandbox-down   # Tear down sandbox container
@@ -107,6 +108,18 @@ Expected final output:
 ```
 
 If the sandbox image is missing, the e2e test skips with `run make build first`.
+
+### Run demo task
+
+For presentations, `make demo-task` runs the visible frontend-edit demo as one local command:
+
+```bash
+.venv/bin/python -m pip install -e ".[dev,orchestrator]"
+make build
+make demo-task PYTHON=.venv/bin/python
+```
+
+The script starts a temporary local orchestrator and Wrangler Worker, creates a sandbox through the Worker API, seeds `/workspace` with this repo, runs the existing `safe-run run` command that changes `demo-frontend/index.html` and `demo-frontend/styles.css`, runs `safe-run diff`, prints the diff output, and deletes the sandbox.
 
 ### Demo frontend
 
@@ -182,4 +195,3 @@ Expected output includes `created hello.txt` from `diff` and `removed hello.txt`
 ### Terraform
 
 See [infra/README.md](infra/README.md) for `terraform init` / `plan` / `apply`. Do not commit API tokens; use `TF_VAR_*` or a secrets backend in real use.
-
