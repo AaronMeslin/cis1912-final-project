@@ -85,6 +85,25 @@ def test_create_sandbox_accepts_internal_token_and_registers_container(monkeypat
     assert body["status"] == "running"
 
 
+def test_create_sandbox_can_seed_workspace_from_local_directory(monkeypatch, tmp_path: Path) -> None:
+    """Demo sandboxes can start with a repo-like workspace to produce reviewable diffs."""
+    seed_dir = tmp_path / "seed"
+    (seed_dir / "demo-frontend").mkdir(parents=True)
+    (seed_dir / "demo-frontend" / "index.html").write_text("Sandbox Demo", encoding="utf-8")
+    monkeypatch.setenv("SAEP_WORKSPACE_SEED_DIR", seed_dir.as_posix())
+    fake = FakeDockerClient()
+    app = load_app(monkeypatch, tmp_path, fake)
+    client = TestClient(app)
+    headers = {"X-SAEP-Internal-Token": "test-token"}
+
+    response = client.post("/sandbox/create", headers=headers)
+
+    assert response.status_code == 200
+    sandbox_id = response.json()["sandbox_id"]
+    workspace = tmp_path / "workspaces" / sandbox_id
+    assert (workspace / "demo-frontend" / "index.html").read_text(encoding="utf-8") == "Sandbox Demo"
+
+
 def test_health_and_delete_use_registered_container(monkeypatch, tmp_path: Path) -> None:
     """Health and delete should operate on the registry row created earlier."""
     fake = FakeDockerClient()

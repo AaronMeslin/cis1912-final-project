@@ -42,6 +42,22 @@ def test_create_container_makes_workspace_writable_for_non_root_agent(monkeypatc
     }
 
 
+def test_create_container_makes_seeded_files_writable_for_non_root_agent(monkeypatch, tmp_path: Path) -> None:
+    """Seeded repo files must be writable by the sandbox user on Linux bind mounts."""
+    fake_docker = FakeDockerClient()
+    monkeypatch.setattr("orchestrator.docker_client.docker.from_env", lambda: fake_docker)
+    client = DockerSandboxClient(settings(tmp_path))
+    workspace = tmp_path / "workspaces" / "sandbox-id"
+    seeded_file = workspace / "demo-frontend" / "index.html"
+    seeded_file.parent.mkdir(parents=True)
+    seeded_file.write_text("Sandbox Demo", encoding="utf-8")
+    seeded_file.chmod(0o644)
+
+    client.create_container("sandbox-id", workspace)
+
+    assert seeded_file.stat().st_mode & stat.S_IWOTH
+
+
 def settings(tmp_path: Path) -> Settings:
     return Settings(
         host="127.0.0.1",
@@ -49,6 +65,7 @@ def settings(tmp_path: Path) -> Settings:
         sandbox_image="saep-sandbox:local",
         registry_db=tmp_path / "registry.sqlite3",
         workspaces_dir=tmp_path / "workspaces",
+        workspace_seed_dir=None,
         internal_token="test-token",
         exec_timeout_seconds=300,
         container_memory="1g",

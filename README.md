@@ -46,6 +46,7 @@ The next major milestone is packaging the demo and CI flow around the local end-
 | Docker sandbox image | [sandbox/README.md](sandbox/README.md) |
 | Snapshot / diff / rollback CLI | [snapshot/README.md](snapshot/README.md) |
 | Control plane API (Workers) | [control-plane/README.md](control-plane/README.md) |
+| Demo frontend target | [demo-frontend/README.md](demo-frontend/README.md) |
 | Infrastructure (Terraform) | [infra/README.md](infra/README.md) |
 
 ## Task checklist
@@ -119,7 +120,7 @@ make test           # Run snapshot Python compile check + pytest suite
 make sandbox-smoke  # Run safe-run diff/undo inside the Docker sandbox
 make orchestrator-test   # Run FastAPI orchestrator and Worker contract tests
 make orchestrator-up     # Start the Worker-compatible FastAPI orchestrator
-make e2e-smoke           # Run Worker → orchestrator → Docker → safe-run smoke test
+make e2e-smoke           # Run Worker → orchestrator → Docker → safe-run demo smoke test
 make e2e-smoke SAEP_SANDBOX_IMAGE=saep-sandbox:ci  # Use a specific sandbox image
 make dev                 # Start the control plane locally (Wrangler dev)
 make sandbox-up     # Optional: run sandbox container (see Makefile)
@@ -136,7 +137,7 @@ make test PYTHON=.venv/bin/python
 
 ### Full local end-to-end smoke test
 
-This verifies the public local Worker API all the way through Docker and `safe-run`:
+This verifies the public local Worker API all the way through Docker and `safe-run`, including a small PR-demo style frontend change:
 
 ```bash
 .venv/bin/python -m pip install -e ".[dev,orchestrator]"
@@ -152,7 +153,8 @@ The `make e2e-smoke` target runs pytest with live logs enabled (`-s`), so you sh
 4. Calls the Worker API to create a sandbox
 5. Runs `safe-run run` inside the sandbox to create `f.txt`
 6. Runs `safe-run diff` and verifies `created f.txt`
-7. Deletes the sandbox and stops both local processes
+7. Seeds the sandbox with this repo, changes `demo-frontend/index.html` and `demo-frontend/styles.css`, and verifies `safe-run diff` reports both files as modified
+8. Deletes the sandbox and stops both local processes
 
 Expected final output:
 
@@ -162,6 +164,10 @@ Expected final output:
 ```
 
 If the sandbox image is missing, the e2e test skips with `run make build first`.
+
+### Demo frontend
+
+The `demo-frontend/` folder is a static visual target for the PR-demo path. Open `demo-frontend/index.html` in a browser to see the baseline page. The e2e smoke test asks the sandbox to change the headline from `Sandbox Demo` to `Sandbox Agent Demo` and the accent color from blue to purple, then checks that `safe-run diff` reports those files as modified.
 
 ### CI coverage
 

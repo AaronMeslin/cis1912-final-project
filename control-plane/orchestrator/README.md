@@ -15,6 +15,7 @@ The current implementation supports local Docker sandbox lifecycle:
 - `DELETE /sandbox/:id` to remove the container and registry row
 - `POST /sandbox/:id/exec` to stream command output from a sandbox
 - Startup reconciliation for stale registry rows and orphaned managed containers
+- Optional workspace seeding with `SAEP_WORKSPACE_SEED_DIR` for repo-like demo sandboxes
 
 Worker proxy integration is a planned follow-up phase.
 
@@ -29,6 +30,16 @@ make orchestrator-up
 ```
 
 The orchestrator binds to `127.0.0.1:9999` by default. It is local-only; a deployed Cloudflare Worker cannot reach this address.
+
+## Workspace seeding
+
+By default, each sandbox starts with an empty writable `/workspace`. For local demos and e2e tests, set `SAEP_WORKSPACE_SEED_DIR` to copy a local directory into the sandbox workspace before the container starts:
+
+```bash
+SAEP_WORKSPACE_SEED_DIR=$PWD make orchestrator-up
+```
+
+This is how the PR-demo smoke test gives the sandbox an existing `demo-frontend/` file tree to modify and inspect with `safe-run diff`.
 
 ## Local auth
 
