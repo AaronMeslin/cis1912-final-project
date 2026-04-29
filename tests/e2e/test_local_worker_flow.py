@@ -76,7 +76,7 @@ def test_worker_orchestrator_docker_safe_run_flow(tmp_path: Path) -> None:
                 assert write_file.status_code == 200, write_file.text
                 write_events = sse_events(write_file.text)
                 log_sse_events("safe-run run", write_events)
-                assert write_events[-1] == ("exit", {"code": 0})
+                assert write_events[-1] == ("exit", {"code": 0}), write_file.text
 
                 log("POST /sandbox/:id/exec safe-run diff")
                 diff = httpx.post(
