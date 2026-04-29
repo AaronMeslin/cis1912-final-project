@@ -2,7 +2,7 @@
 
 This project lets AI coding agents run commands inside **isolated Docker sandboxes**. Every run can be snapshotted, diffed, and rolled back before changes are committed or copied back to a real workspace.
 
-The current implementation is a working local vertical slice: a Cloudflare Worker control plane proxies requests to a FastAPI orchestrator, the orchestrator manages Docker sandboxes, and the `safe-run` snapshot engine records file changes. The demo path changes a small static frontend inside the sandbox and returns a reviewable diff.
+The system is built as a local vertical slice: a Cloudflare Worker control plane proxies requests to a FastAPI orchestrator, the orchestrator manages Docker sandboxes, and the `safe-run` snapshot engine records file changes. The demo path changes a small static frontend inside the sandbox and returns a reviewable diff.
 
 ## Architecture
 
@@ -34,16 +34,6 @@ The current implementation is a working local vertical slice: a Cloudflare Worke
 ```
 
 Flow in words: the **agent** asks the **control plane** to create or use a sandbox; the Worker proxies to the local orchestrator; execution and file changes happen in the **sandbox**; the **snapshot engine** records state, diffs changes, and rolls back on demand.
-
-## What works
-
-- Docker sandbox image with Python, Node, Git, Bash, and headless Chromium.
-- Snapshot, diff, and rollback through the `safe-run` CLI.
-- FastAPI orchestrator for sandbox lifecycle, health checks, command execution, and cleanup.
-- Cloudflare Worker API for public auth and proxying to the orchestrator.
-- Server-sent event streaming for command output.
-- CI coverage for Python tests, Docker smoke tests, Terraform validation, and the local e2e path.
-- Demo frontend target that proves a sandbox can make a visible UI change and expose it through `safe-run diff`.
 
 ## Component documentation
 
@@ -103,10 +93,6 @@ Flow in words: the **agent** asks the **control plane** to create or use a sandb
 - [ ] Session health and lifecycle logging
 - [ ] Resource usage metrics (CPU, memory, disk)
 - [ ] Execution result tracking
-
-## What is left
-
-The core platform is working locally. The smallest useful next step is a scripted agent task layer: one command or endpoint that creates a sandbox, runs the demo frontend change, returns `safe-run diff`, and cleans up. Full LLM planning, GitHub PR creation, cloud deployment, and deeper sandbox hardening are natural follow-ups.
 
 ## Local development setup
 
