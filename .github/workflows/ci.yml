@@ -21,7 +21,7 @@ jobs:
       - name: Full Python test suite
         run: |
           make test PYTHON=python3
-          # make test covers tests/snapshot tests/sandbox tests/control_plane
+          # make test covers tests/snapshot tests/sandbox tests/control_plane tests/scripts
 
   docker-sandbox:
     runs-on: ubuntu-latest
