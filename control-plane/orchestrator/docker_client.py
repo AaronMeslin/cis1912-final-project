@@ -81,6 +81,7 @@ class DockerSandboxClient:
     def create_container(self, sandbox_id: str, workspace_path: Path) -> ContainerHandle:
         """Create and start a sandbox container for one sandbox ID."""
         workspace_path.mkdir(parents=True, exist_ok=True)
+        workspace_path.chmod(0o777)
         container_name = self.container_name(sandbox_id)
         try:
             container = self.client.containers.run(

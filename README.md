@@ -89,7 +89,7 @@ The next major milestone is packaging the demo and CI flow around the local end-
 - [x] Integration tests for sandbox spin-up/teardown
 - [x] Automated diff/rollback tests
 - [x] GitHub Actions workflow
-- [ ] CI job for full Worker → orchestrator → Docker e2e smoke
+- [x] CI job for full Worker → orchestrator → Docker e2e smoke
 
 ### Observability
 
@@ -100,7 +100,7 @@ The next major milestone is packaging the demo and CI flow around the local end-
 ## Suggested next steps
 
 1. **End-to-end demo:** use the local Worker API to create a sandbox, execute a coding task, inspect `safe-run diff`, and clean up.
-2. **CI e2e hardening:** run the full Worker → orchestrator → Docker smoke test in GitHub Actions after building the sandbox image.
+2. **GitHub PR demo task:** have the agent make a tiny code change inside the sandbox, inspect the diff, and prepare a PR handoff.
 3. **Sandbox hardening:** document and test runtime flags for network policy, read-only root filesystem, tmpfs, dropped capabilities, and resource limits.
 
 ## Local development setup
@@ -120,6 +120,7 @@ make sandbox-smoke  # Run safe-run diff/undo inside the Docker sandbox
 make orchestrator-test   # Run FastAPI orchestrator and Worker contract tests
 make orchestrator-up     # Start the Worker-compatible FastAPI orchestrator
 make e2e-smoke           # Run Worker → orchestrator → Docker → safe-run smoke test
+make e2e-smoke SAEP_SANDBOX_IMAGE=saep-sandbox:ci  # Use a specific sandbox image
 make dev                 # Start the control plane locally (Wrangler dev)
 make sandbox-up     # Optional: run sandbox container (see Makefile)
 make sandbox-down   # Tear down sandbox container
@@ -161,6 +162,15 @@ Expected final output:
 ```
 
 If the sandbox image is missing, the e2e test skips with `run make build first`.
+
+### CI coverage
+
+GitHub Actions runs the same paths used locally:
+
+- `python-tests` installs `.[dev,orchestrator]` and runs `make test PYTHON=python3`, covering snapshot tests, sandbox contract tests, and control-plane/orchestrator tests.
+- `docker-sandbox` builds `sandbox/Dockerfile` as `saep-sandbox:ci` and runs `make sandbox-smoke IMAGE_TAG=ci`.
+- `worker-orchestrator-e2e` builds `saep-sandbox:ci` and runs `make e2e-smoke PYTHON=python3 SAEP_SANDBOX_IMAGE=saep-sandbox:ci`.
+- `terraform` runs formatting, backend-free init, and validation for `infra/`.
 
 ### Manual control plane testing (Wrangler + local orchestrator)
 

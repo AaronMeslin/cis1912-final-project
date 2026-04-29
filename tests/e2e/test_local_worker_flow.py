@@ -21,6 +21,7 @@ API_KEY = "dev-api-key"
 INTERNAL_TOKEN = "dev-internal-token"
 ORCHESTRATOR_URL = "http://127.0.0.1:9999"
 WORKER_URL = "http://127.0.0.1:8787"
+SANDBOX_IMAGE = os.environ.get("SAEP_SANDBOX_IMAGE", "saep-sandbox:local")
 
 pytestmark = [pytest.mark.e2e, pytest.mark.integration]
 
@@ -29,7 +30,7 @@ def test_worker_orchestrator_docker_safe_run_flow(tmp_path: Path) -> None:
     """Exercise the public Worker API through to Docker and safe-run."""
     log("starting SAEP e2e smoke test")
     docker_client = docker_client_or_skip()
-    log("Docker daemon reachable and saep-sandbox:local image is present")
+    log(f"Docker daemon reachable and {SANDBOX_IMAGE} image is present")
     require_port_free(9999)
     require_port_free(8787)
     env = local_env(tmp_path)
@@ -75,7 +76,7 @@ def test_worker_orchestrator_docker_safe_run_flow(tmp_path: Path) -> None:
                 assert write_file.status_code == 200, write_file.text
                 write_events = sse_events(write_file.text)
                 log_sse_events("safe-run run", write_events)
-                assert write_events[-1] == ("exit", {"code": 0})
+                assert write_events[-1] == ("exit", {"code": 0}), write_file.text
 
                 log("POST /sandbox/:id/exec safe-run diff")
                 diff = httpx.post(
@@ -111,12 +112,12 @@ def docker_client_or_skip():
     import docker
 
     try:
-        log("checking Docker daemon and saep-sandbox:local image")
+        log(f"checking Docker daemon and {SANDBOX_IMAGE} image")
         client = docker.from_env()
         client.ping()
-        client.images.get("saep-sandbox:local")
+        client.images.get(SANDBOX_IMAGE)
     except ImageNotFound:
-        pytest.skip("saep-sandbox:local image is not built; run `make build` first")
+        pytest.skip(f"{SANDBOX_IMAGE} image is not built; run `make build` first")
     except DockerException as exc:
         pytest.skip(f"Docker is not available: {exc}")
     return client
@@ -138,7 +139,7 @@ def local_env(tmp_path: Path) -> dict[str, str]:
             "SAEP_INTERNAL_TOKEN": INTERNAL_TOKEN,
             "SAEP_REGISTRY_DB": (tmp_path / "registry.sqlite3").as_posix(),
             "SAEP_WORKSPACES_DIR": (tmp_path / "workspaces").as_posix(),
-            "SAEP_SANDBOX_IMAGE": "saep-sandbox:local",
+            "SAEP_SANDBOX_IMAGE": SANDBOX_IMAGE,
         }
     )
     return env

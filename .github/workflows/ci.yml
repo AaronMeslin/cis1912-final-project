@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  lint-and-snapshot:
+  python-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,13 +16,12 @@ jobs:
           python-version: "3.11"
 
       - name: Install Python test dependencies
-        run: python3 -m pip install -e ".[dev]"
+        run: python3 -m pip install -e ".[dev,orchestrator]"
 
-      - name: Python syntax (snapshot package)
-        run: python3 -m compileall -q snapshot
-
-      - name: Snapshot tests
-        run: python3 -m pytest tests/snapshot
+      - name: Full Python test suite
+        run: |
+          make test PYTHON=python3
+          # make test covers tests/snapshot tests/sandbox tests/control_plane
 
   docker-sandbox:
     runs-on: ubuntu-latest
@@ -45,6 +44,39 @@ jobs:
 
       - name: Docker sandbox smoke test
         run: make sandbox-smoke IMAGE_TAG=ci
+
+  worker-orchestrator-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Python test dependencies
+        run: python3 -m pip install -e ".[dev,orchestrator]"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build sandbox image for e2e
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./sandbox/Dockerfile
+          load: true
+          push: false
+          tags: saep-sandbox:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Worker to orchestrator Docker e2e smoke
+        run: make e2e-smoke PYTHON=python3 SAEP_SANDBOX_IMAGE=saep-sandbox:ci
 
   terraform:
     runs-on: ubuntu-latest
