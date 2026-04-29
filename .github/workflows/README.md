@@ -14,7 +14,7 @@ CI pipelines for the Sandboxed Agent Execution Platform: the full Python test su
 
 - **Python suite**: installs `.[dev,orchestrator]`, then runs `make test PYTHON=python3` to cover snapshot tests, sandbox contract tests, and control-plane/orchestrator tests.
 - **Docker sandbox**: builds `sandbox/Dockerfile` as `saep-sandbox:ci` without pushing, loads it into the runner, then runs `make sandbox-smoke IMAGE_TAG=ci`.
-- **Worker/orchestrator e2e**: builds `sandbox/Dockerfile` as `saep-sandbox:ci`, then runs `make e2e-smoke PYTHON=python3 SAEP_SANDBOX_IMAGE=saep-sandbox:ci` to verify Worker → FastAPI orchestrator → Docker sandbox → `safe-run`.
+- **Worker/orchestrator e2e**: builds `sandbox/Dockerfile` as `saep-sandbox:ci`, then runs `make e2e-smoke PYTHON=python3 SAEP_SANDBOX_IMAGE=saep-sandbox:ci` to verify Worker → FastAPI orchestrator → Docker sandbox → `safe-run`, including the `demo-frontend/` visual-change diff.
 - **Terraform**: runs `terraform fmt -check -recursive infra`, `terraform -chdir=infra init -backend=false -input=false`, and `terraform -chdir=infra validate`.
 
 ## Tasks to implement

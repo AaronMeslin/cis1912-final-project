@@ -20,6 +20,7 @@ class Settings:
     sandbox_image: str
     registry_db: Path
     workspaces_dir: Path
+    workspace_seed_dir: Path | None
     internal_token: str | None
     exec_timeout_seconds: int
     container_memory: str
@@ -34,6 +35,7 @@ def load_settings() -> Settings:
         sandbox_image=os.getenv("SAEP_SANDBOX_IMAGE", "saep-sandbox:local"),
         registry_db=Path(os.getenv("SAEP_REGISTRY_DB", ".saep-orchestrator/registry.sqlite3")),
         workspaces_dir=Path(os.getenv("SAEP_WORKSPACES_DIR", ".saep-orchestrator/workspaces")),
+        workspace_seed_dir=Path(seed_dir) if (seed_dir := os.getenv("SAEP_WORKSPACE_SEED_DIR")) else None,
         internal_token=os.getenv("SAEP_INTERNAL_TOKEN") or None,
         exec_timeout_seconds=_int_env("SAEP_EXEC_TIMEOUT_SECONDS", 300),
         container_memory=os.getenv("SAEP_CONTAINER_MEMORY", "1g"),

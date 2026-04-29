@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 import json
+from pathlib import Path
+import shutil
 import uuid
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
@@ -103,6 +105,7 @@ def create_sandbox(client: DockerSandboxClient = Depends(get_docker_client)) -> 
         workspace_path=workspace_path.as_posix(),
     )
     try:
+        seed_workspace(workspace_path)
         container = client.create_container(sandbox_id, workspace_path)
     except SandboxImageNotFound as exc:
         registry.update_status(sandbox_id, "error")
@@ -133,6 +136,32 @@ def create_sandbox(client: DockerSandboxClient = Depends(get_docker_client)) -> 
         container_id=record.container_id,
         status=record.status,
         created_at=record.created_at,
+    )
+
+
+def seed_workspace(workspace_path: Path) -> None:
+    """Optionally copy a local seed directory into a new sandbox workspace."""
+    if settings.workspace_seed_dir is None:
+        return
+    if not settings.workspace_seed_dir.is_dir():
+        raise RuntimeError(f"workspace seed directory does not exist: {settings.workspace_seed_dir}")
+    workspace_path.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(
+        settings.workspace_seed_dir,
+        workspace_path,
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns(
+            ".git",
+            ".mypy_cache",
+            ".pytest_cache",
+            ".ruff_cache",
+            ".saep",
+            ".terraform",
+            ".venv",
+            "__pycache__",
+            "node_modules",
+            "saep.egg-info",
+        ),
     )
 
 

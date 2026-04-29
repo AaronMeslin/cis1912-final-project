@@ -91,6 +91,48 @@ def test_worker_orchestrator_docker_safe_run_flow(tmp_path: Path) -> None:
                 log_sse_events("safe-run diff", diff_events)
                 assert "created f.txt" in diff.text
 
+                log("POST /sandbox/:id/exec safe-run run ... update demo frontend")
+                demo_update = httpx.post(
+                    f"{WORKER_URL}/sandbox/{sandbox['sandbox_id']}/exec",
+                    headers=headers,
+                    json={
+                        "command": [
+                            "safe-run",
+                            "run",
+                            "python3",
+                            "-c",
+                            (
+                                "from pathlib import Path; "
+                                "index = Path('demo-frontend/index.html'); "
+                                "styles = Path('demo-frontend/styles.css'); "
+                                "index.write_text(index.read_text(encoding='utf-8').replace('Sandbox Demo', 'Sandbox Agent Demo'), encoding='utf-8'); "
+                                "styles.write_text(styles.read_text(encoding='utf-8').replace('#2563eb', '#7c3aed'), encoding='utf-8')"
+                            ),
+                        ],
+                        "timeout": 30,
+                    },
+                    timeout=60,
+                )
+                log_response("exec demo frontend update", demo_update)
+                assert demo_update.status_code == 200, demo_update.text
+                demo_events = sse_events(demo_update.text)
+                log_sse_events("demo frontend update", demo_events)
+                assert demo_events[-1] == ("exit", {"code": 0}), demo_update.text
+
+                log("POST /sandbox/:id/exec safe-run diff after demo frontend update")
+                demo_diff = httpx.post(
+                    f"{WORKER_URL}/sandbox/{sandbox['sandbox_id']}/exec",
+                    headers=headers,
+                    json={"command": ["safe-run", "diff"], "timeout": 30},
+                    timeout=60,
+                )
+                log_response("exec demo frontend diff", demo_diff)
+                assert demo_diff.status_code == 200, demo_diff.text
+                demo_diff_events = sse_events(demo_diff.text)
+                log_sse_events("demo frontend diff", demo_diff_events)
+                assert "modified demo-frontend/index.html" in demo_diff.text
+                assert "modified demo-frontend/styles.css" in demo_diff.text
+
                 log("DELETE /sandbox/:id via Worker")
                 delete = httpx.delete(f"{WORKER_URL}/sandbox/{sandbox['sandbox_id']}", headers=headers, timeout=30)
                 log_response("delete sandbox", delete)
@@ -139,6 +181,7 @@ def local_env(tmp_path: Path) -> dict[str, str]:
             "SAEP_INTERNAL_TOKEN": INTERNAL_TOKEN,
             "SAEP_REGISTRY_DB": (tmp_path / "registry.sqlite3").as_posix(),
             "SAEP_WORKSPACES_DIR": (tmp_path / "workspaces").as_posix(),
+            "SAEP_WORKSPACE_SEED_DIR": REPO_ROOT.as_posix(),
             "SAEP_SANDBOX_IMAGE": SANDBOX_IMAGE,
         }
     )

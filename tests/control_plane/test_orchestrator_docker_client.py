@@ -49,6 +49,7 @@ def settings(tmp_path: Path) -> Settings:
         sandbox_image="saep-sandbox:local",
         registry_db=tmp_path / "registry.sqlite3",
         workspaces_dir=tmp_path / "workspaces",
+        workspace_seed_dir=None,
         internal_token="test-token",
         exec_timeout_seconds=300,
         container_memory="1g",
