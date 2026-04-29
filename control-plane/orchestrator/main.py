@@ -156,7 +156,6 @@ def seed_workspace(workspace_path: Path) -> None:
             ".pytest_cache",
             ".ruff_cache",
             ".saep",
-            ".terraform",
             ".venv",
             "__pycache__",
             "node_modules",

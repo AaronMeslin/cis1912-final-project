@@ -4,7 +4,7 @@
 
 This Worker is the **HTTP control plane** between AI agents (or a broker) and **sandbox instances**. It authenticates public API requests and proxies lifecycle, health, and exec calls to the local Docker-backed orchestrator in [`orchestrator/`](orchestrator/).
 
-For local development, Wrangler serves the Worker on `127.0.0.1:8787` and proxies to the orchestrator on `127.0.0.1:9999`. Deployment-specific URLs and secrets are configured through Wrangler and Terraform.
+For local development, Wrangler serves the Worker on `127.0.0.1:8787` and proxies to the orchestrator on `127.0.0.1:9999`. Deployment-specific URLs and secrets are configured through Wrangler.
 
 ## Files in this directory
 

@@ -5,7 +5,6 @@ name = "saep-control-plane"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
-# TODO: Set workers_dev = false and attach custom routes / zones in production.
 workers_dev = true
 
 # Local development values. Use `wrangler secret put API_KEY` and
@@ -16,6 +15,3 @@ SANDBOX_ORCHESTRATOR_URL = "http://127.0.0.1:9999"
 API_KEY = "dev-api-key"
 ORCHESTRATOR_TOKEN = "dev-internal-token"
 
-# TODO: Uncomment when using modules with imports from npm.
-# [build]
-# command = ""

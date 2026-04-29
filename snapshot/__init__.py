@@ -1,1 +1,1 @@
-"""Snapshot / diff / rollback package (scaffold)."""
+"""Snapshot, diff, and rollback package for sandboxed command execution."""

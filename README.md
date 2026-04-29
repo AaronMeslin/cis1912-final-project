@@ -43,9 +43,8 @@ Flow in words: the **agent** asks the **control plane** to create or use a sandb
 | Snapshot / diff / rollback CLI | [snapshot/README.md](snapshot/README.md) |
 | Control plane API (Workers) | [control-plane/README.md](control-plane/README.md) |
 | Demo frontend target | [demo-frontend/README.md](demo-frontend/README.md) |
-| Infrastructure (Terraform) | [infra/README.md](infra/README.md) |
 
-The repository is organized around the major pieces of the platform: the sandbox image, snapshot engine, control plane, local orchestrator, demo frontend, infrastructure scaffold, and automated tests.
+The repository is organized around the major pieces of the platform: the sandbox image, snapshot engine, control plane, local orchestrator, demo frontend, and automated tests.
 
 ## Local development setup
 
@@ -132,7 +131,6 @@ GitHub Actions runs the same paths used locally:
 - `python-tests` installs `.[dev,orchestrator]` and runs `make test PYTHON=python3`, covering snapshot tests, sandbox contract tests, and control-plane/orchestrator tests.
 - `docker-sandbox` builds `sandbox/Dockerfile` as `saep-sandbox:ci` and runs `make sandbox-smoke IMAGE_TAG=ci`.
 - `worker-orchestrator-e2e` builds `saep-sandbox:ci` and runs `make e2e-smoke PYTHON=python3 SAEP_SANDBOX_IMAGE=saep-sandbox:ci`.
-- `terraform` runs formatting, backend-free init, and validation for `infra/`.
 
 ### Manual control plane testing (Wrangler + local orchestrator)
 
@@ -191,7 +189,3 @@ safe-run undo
 ```
 
 Expected output includes `created hello.txt` from `diff` and `removed hello.txt` from `undo`.
-
-### Terraform
-
-See [infra/README.md](infra/README.md) for `terraform init` / `plan` / `apply`. Do not commit API tokens; use `TF_VAR_*` or a secrets backend in real use.

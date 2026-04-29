@@ -77,24 +77,3 @@ jobs:
 
       - name: Worker to orchestrator Docker e2e smoke
         run: make e2e-smoke PYTHON=python3 SAEP_SANDBOX_IMAGE=saep-sandbox:ci
-
-  terraform:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.5.0"
-
-      - name: Terraform fmt
-        run: terraform fmt -check -recursive infra
-
-      - name: Terraform init (no backend)
-        run: terraform -chdir=infra init -backend=false -input=false
-
-      - name: Terraform validate
-        env:
-          # Provider block may read env; validation should not call Cloudflare API
-          CLOUDFLARE_API_TOKEN: "dummy-for-validate-only"
-        run: terraform -chdir=infra validate

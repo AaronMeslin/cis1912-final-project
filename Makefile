@@ -15,7 +15,7 @@ test:
 	$(PYTHON) -m pytest tests/snapshot tests/sandbox tests/control_plane tests/scripts
 
 lint:
-	@echo "TODO: add ruff/black when pyproject.toml exists"
+	@echo "Running Python syntax checks"
 	$(PYTHON) -m compileall -q snapshot control-plane/orchestrator
 
 dev:
@@ -38,7 +38,7 @@ demo-task:
 sandbox-up:
 	docker rm -f $(SANDBOX_CONTAINER) 2>/dev/null || true
 	docker run -d --name $(SANDBOX_CONTAINER) -p 9223:9222 $(IMAGE_NAME):$(IMAGE_TAG) sleep infinity
-	@echo "Sandbox container: $(SANDBOX_CONTAINER) (stub: attach shell with docker exec -it $(SANDBOX_CONTAINER) bash)"
+	@echo "Sandbox container: $(SANDBOX_CONTAINER) (attach shell with docker exec -it $(SANDBOX_CONTAINER) bash)"
 
 sandbox-down:
 	docker rm -f $(SANDBOX_CONTAINER) 2>/dev/null || true
